@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>موسوعة هندسة وتصميم النظم — System Design Mastery</title>
+  <meta name="description" content="الدليل المرجعي الشامل لتصميم الأنظمة الموزعة الفائقة — من المفاهيم الأساسية إلى معماريات الإنتاج العالمي و 31 مسألة عملية واقعية للشركات الكبرى.">
+  <meta name="keywords" content="System Design, هندسة النظم, Distributed Systems, Kafka, Redis, Consistent Hashing, Sharding, Microservices, Scale">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- Styles -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Top App Header -->
+  <header class="app-header">
+    <div class="header-right-group">
+      <button id="sidebarToggleBtn" class="sidebar-toggle-btn" title="تبديل إظهار/إخفاء القائمة الجانبية" aria-label="تبديل القائمة الجانبية">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="9" y1="3" x2="9" y2="21"></line>
+        </svg>
+      </button>
+
+      <a href="#module-1" class="header-brand">
+        <div class="brand-icon">SD</div>
+        <span class="brand-title">System Design Mastery</span>
+        <span class="brand-badge">Enterprise Edition</span>
+      </a>
+    </div>
+
+    <div class="header-controls">
+      <div class="search-box-wrapper">
+        <input type="text" id="globalSearchInput" class="search-input" placeholder="ابحث في المفاهيم والمسائل والتقنيات...">
+        <span class="search-icon-pos">🔍</span>
+        <button id="searchClearBtn" class="search-clear-btn" title="مسح نص البحث" aria-label="مسح البحث">✕</button>
+      </div>
+
+      <button id="themeToggleBtn" class="theme-toggle-btn" title="تبديل وضع السمة (Dark/Light)" aria-label="تبديل السمة">
+        <svg class="sun-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- App Layout -->
+  <div class="app-container">
+    <!-- Sidebar Navigation -->
+    <aside class="app-sidebar" id="appSidebar">
+      <!-- Mobile Close Row -->
+      <div class="sidebar-top-bar">
+        <span class="sidebar-top-title">محتويات الموسوعة</span>
+        <button id="sidebarCloseBtn" class="sidebar-close-btn" title="إغلاق القائمة" aria-label="إغلاق القائمة">✕</button>
+      </div>
+
+      <div class="sidebar-progress">
+        <div class="progress-label-row">
+          <span>معدل التقدم في المرجع</span>
+          <span id="progressText">0% (0/9)</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-bar-fill" id="progressBarFill"></div>
+        </div>
+      </div>
+
+      <nav class="nav-groups-container" id="navGroupsContainer">
+        <!-- Injected via app.js -->
+      </nav>
+    </aside>
+
+    <!-- Mobile Sidebar Backdrop Overlay -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <!-- Main Content Container -->
+    <main class="app-main">
+      <!-- Search Overlay Results (if searching) -->
+      <div id="searchOverlayPane" class="search-results-pane"></div>
+
+      <!-- Active Content Module -->
+      <div id="mainContentArea">
+        <!-- Rendered dynamically via app.js -->
+      </div>
+    </main>
+  </div>
+
+  <!-- Scripts -->
+  <script src="diagrams.js"></script>
+  <script src="content.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
