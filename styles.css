@@ -2261,3 +2261,380 @@ body.sidebar-collapsed .app-main {
   font-weight: 800;
   background: var(--color-orange-dim);
   color: var(--color-orange);
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+}
+
+.step-comp-tag {
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: var(--color-purple-dim);
+  color: var(--color-purple);
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+}
+
+.step-detail-text {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Next.js / Vercel Dark Mode Specialized Component Styling */
+[data-theme="dark"] .topic-card,
+[data-theme="dark"] .challenge-card,
+[data-theme="dark"] .capstone-container,
+[data-theme="dark"] .case-card,
+[data-theme="dark"] .db-strategy-card,
+[data-theme="dark"] .schema-table-card,
+[data-theme="dark"] .protocol-matrix-card,
+[data-theme="dark"] .api-contract-card,
+[data-theme="dark"] .e2e-flow-card {
+  background-color: #0e0e0e;
+  border-color: #222222;
+}
+
+[data-theme="dark"] .db-tier-card,
+[data-theme="dark"] .protocol-card,
+[data-theme="dark"] .step-content-box,
+[data-theme="dark"] .table-responsive {
+  background-color: #050505;
+  border-color: #222222;
+}
+
+[data-theme="dark"] .schema-data-table th {
+  background-color: #111111;
+  border-color: #222222;
+  color: #a1a1a1;
+}
+
+[data-theme="dark"] .schema-data-table td {
+  border-color: #1a1a1a;
+}
+
+[data-theme="dark"] .schema-data-table tbody tr:hover {
+  background-color: #121212;
+}
+
+[data-theme="dark"] .ddl-header {
+  background-color: #111111;
+  border-color: #222222;
+}
+
+[data-theme="dark"] .ddl-pre,
+[data-theme="dark"] .contract-pre {
+  background-color: #050505;
+  border-color: #1a1a1a;
+}
+  background-color: #0a0a0a;
+  border-color: #222222;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
+[data-theme="dark"] .topic-card:hover,
+[data-theme="dark"] .challenge-card:hover,
+[data-theme="dark"] .case-card:hover {
+  border-color: #383838;
+}
+
+[data-theme="dark"] .nav-link.active {
+  background-color: #141414;
+  color: #ffffff;
+  border-right-color: #ededed;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .filter-btn.active,
+[data-theme="dark"] .studio-tab-btn.active {
+  background-color: #171717;
+  color: #ffffff;
+  border-color: #404040;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .brand-icon {
+  background: #111111;
+  border-color: #444444;
+  color: #ededed;
+}
+
+[data-theme="dark"] .brand-badge {
+  background: #111111;
+  border-color: #333333;
+  color: #a1a1a1;
+}
+
+[data-theme="dark"] .solution-toggle-btn {
+  background-color: #111111;
+  border-color: #262626;
+  color: #ededed;
+}
+
+[data-theme="dark"] .solution-toggle-btn:hover {
+  background-color: #171717;
+  border-color: #404040;
+}
+
+[data-theme="dark"] .step-card {
+  background-color: #0e0e0e;
+  border-color: #222222;
+}
+
+[data-theme="dark"] .option-btn {
+  background-color: #050505;
+  border-color: #222222;
+  color: #ededed;
+}
+
+[data-theme="dark"] .option-btn:hover {
+  background-color: #141414;
+  border-color: #404040;
+}
+
+[data-theme="dark"] .specs-bar,
+[data-theme="dark"] .calc-box {
+  background-color: #050505;
+  border-color: #222222;
+}
+
+[data-theme="dark"] .training-card {
+  background-color: #0d0d0d;
+  border-color: #222222;
+}
+
+[data-theme="dark"] .training-card:hover {
+  border-color: #444444;
+}
+
+[data-theme="dark"] .level-row {
+  background-color: #0d0d0d;
+  border-color: #1e1e1e;
+}
+
+/* ==========================================================================
+   INTERACTIVE CODE LAB & ALGORITHMS PLAYGROUND (MODULE 9)
+   ========================================================================== */
+
+.code-lab-container {
+  margin-top: 1.5rem;
+}
+
+.algo-tabs-scroll {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.85rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.algo-tab-btn {
+  background: var(--bg-surface);
+  border: 1.5px solid var(--border-subtle);
+  color: var(--text-muted);
+  padding: 0.65rem 1rem;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.algo-tab-btn:hover {
+  background-color: var(--bg-surface-hover);
+  color: var(--text-main);
+  border-color: var(--border-strong);
+}
+
+.algo-tab-btn.active {
+  background-color: var(--color-primary-dim);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+  box-shadow: 0 2px 8px rgba(29, 78, 216, 0.12);
+}
+
+.algo-badge-pill {
+  font-size: 0.725rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 4px;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.algo-intro-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.algo-intro-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.65rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.algo-intro-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.algo-intro-desc {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+/* Split Grid: Editor (Left) & Terminal Output (Right) */
+.code-playground-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+  align-items: stretch;
+}
+
+@media (max-width: 960px) {
+  .code-playground-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.editor-card, .terminal-card {
+  background-color: var(--bg-surface);
+  border: 1.5px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+}
+
+.panel-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background-color: var(--bg-surface-elevated);
+  border-bottom: 1px solid var(--border-subtle);
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.panel-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.panel-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.btn-editor-action {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-size: 0.775rem;
+  font-weight: 700;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.btn-editor-action:hover {
+  background-color: var(--bg-surface-hover);
+  color: var(--text-main);
+  border-color: var(--border-strong);
+}
+
+.btn-run-code {
+  background-color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  color: var(--text-inverse);
+  font-weight: 800;
+}
+
+.btn-run-code:hover {
+  background-color: var(--color-primary-hover);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(29, 78, 216, 0.3);
+}
+
+/* Editor Body with Gutter & Textarea */
+.editor-body-wrapper {
+  display: flex;
+  flex: 1;
+  min-height: 480px;
+  background-color: #121214;
+  color: #e4e4e7;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  position: relative;
+  direction: ltr;
+  text-align: left;
+}
+
+.editor-gutter {
+  width: 44px;
+  padding: 1rem 0.5rem 1rem 0;
+  background-color: #0c0c0e;
+  border-right: 1px solid #27272a;
+  color: #52525b;
+  text-align: right;
+  user-select: none;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  overflow: hidden;
+  white-space: pre-line;
+}
+
+.editor-code-textarea {
+  flex: 1;
+  padding: 1rem;
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  color: #f4f4f5;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  white-space: pre;
+  overflow: auto;
+  tab-size: 2;
+  -moz-tab-size: 2;
+}
+
+/* Terminal & Console Output Window */
+.terminal-body {
+  flex: 1;
+  min-height: 480px;
+  max-height: 540px;
+  overflow-y: auto;
