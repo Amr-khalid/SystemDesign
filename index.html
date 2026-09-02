@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>System Design Mastery — Distributed Systems & Architecture Handbook</title>
+  <title>موسوعة هندسة وتصميم النظم — System Design Mastery</title>
   <meta name="description" content="الدليل المرجعي الشامل لتصميم الأنظمة الموزعة الفائقة — من المفاهيم الأساسية إلى معماريات الإنتاج العالمي و 31 مسألة عملية واقعية للشركات الكبرى.">
   <meta name="keywords" content="System Design, هندسة النظم, Distributed Systems, Kafka, Redis, Consistent Hashing, Sharding, Microservices, Scale">
   
@@ -36,13 +36,18 @@
 
     <div class="header-controls">
       <div class="search-box-wrapper">
-        <input type="text" id="globalSearchInput" class="search-input" placeholder="ابحث في المفاهيم والمسائل والتقنيات...">
-        <span class="search-icon-pos">🔍</span>
-        <button id="searchClearBtn" class="search-clear-btn" title="مسح نص البحث" aria-label="مسح البحث">✕</button>
+        <input type="text" id="globalSearchInput" class="search-input" placeholder="Search concepts, design problems, architectures...">
+        <button id="searchClearBtn" class="search-clear-btn" title="Clear search" aria-label="Clear search">✕</button>
       </div>
 
-      <button id="themeToggleBtn" class="theme-toggle-btn" title="تبديل وضع السمة (Dark/Light)" aria-label="تبديل السمة">
-        <svg class="sun-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <!-- Language Toggle Button -->
+      <button id="langToggleBtn" class="lang-toggle-btn" title="التبديل إلى العربية / Switch Language" aria-label="Switch Language">
+        <span class="lang-btn-text">العربية</span>
+      </button>
+
+      <!-- Clean Theme Toggle Button -->
+      <button id="themeToggleBtn" class="theme-toggle-btn" title="Toggle theme (Dark/Light)" aria-label="Toggle theme">
+        <svg class="theme-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="5"></circle>
           <line x1="12" y1="1" x2="12" y2="3"></line>
           <line x1="12" y1="21" x2="12" y2="23"></line>
@@ -63,14 +68,14 @@
     <aside class="app-sidebar" id="appSidebar">
       <!-- Mobile Close Row -->
       <div class="sidebar-top-bar">
-        <span class="sidebar-top-title">محتويات الموسوعة</span>
-        <button id="sidebarCloseBtn" class="sidebar-close-btn" title="إغلاق القائمة" aria-label="إغلاق القائمة">✕</button>
+        <span class="sidebar-top-title" id="sidebarTopTitle">Index of Modules</span>
+        <button id="sidebarCloseBtn" class="sidebar-close-btn" title="Close sidebar" aria-label="Close sidebar">✕</button>
       </div>
 
       <div class="sidebar-progress">
         <div class="progress-label-row">
-          <span>معدل التقدم في المرجع</span>
-          <span id="progressText">0% (0/9)</span>
+          <span id="progressLabelText">Overall Mastery Progress</span>
+          <span id="progressText">0% (0/10)</span>
         </div>
         <div class="progress-track">
           <div class="progress-bar-fill" id="progressBarFill"></div>
@@ -100,6 +105,7 @@
   <!-- Scripts -->
   <script src="diagrams.js"></script>
   <script src="content.js"></script>
+  <!-- interview script placeholder -->
   <script src="app.js"></script>
 </body>
 </html>
