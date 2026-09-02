@@ -1913,3 +1913,169 @@ const App = {
       this.readModules.add(modId);
     }
     this.saveProgress();
+    this.renderSidebarNav();
+    
+    // Update any mark read button in view immediately
+    const isRead = this.readModules.has(modId);
+    document.querySelectorAll(`[data-mark-read="${modId}"]`).forEach(btn => {
+      if (modId === 'module-8') {
+        btn.textContent = isRead ? this.t('unmarkModuleRead') : this.t('markStudioRead');
+      } else if (modId === 'module-9') {
+        btn.textContent = isRead ? this.t('unmarkModuleRead') : this.t('markLabRead');
+      } else {
+        btn.textContent = isRead ? this.t('unmarkModuleRead') : this.t('markModuleRead');
+      }
+    });
+  },
+
+  handleSearch(query) {
+    const q = query.trim().toLowerCase();
+    const searchPane = document.getElementById('searchOverlayPane');
+    const mainContent = document.getElementById('mainContentArea');
+    const clearBtn = document.getElementById('searchClearBtn');
+
+    if (clearBtn) {
+      clearBtn.style.display = q ? 'block' : 'none';
+    }
+
+    if (!q) {
+      if (searchPane) searchPane.classList.remove('active');
+      if (mainContent) mainContent.style.display = 'block';
+      return;
+    }
+
+    if (mainContent) mainContent.style.display = 'none';
+    if (!searchPane) return;
+    searchPane.classList.add('active');
+
+    const hits = [];
+
+    SystemDesignData.modules.forEach(mod => {
+      // Match module
+      if (mod.title.toLowerCase().includes(q) || mod.subtitle.toLowerCase().includes(q)) {
+        hits.push({
+          title: `${mod.number}. ${mod.title}`,
+          snippet: mod.subtitle,
+          link: `#${mod.id}`
+        });
+      }
+      // Match sections
+      if (mod.sections) {
+        mod.sections.forEach(sec => {
+          if (sec.title.toLowerCase().includes(q) || sec.description.toLowerCase().includes(q)) {
+            hits.push({
+              title: `${sec.number} ${sec.title}`,
+              snippet: sec.description,
+              link: `#${sec.id}`
+            });
+          }
+        });
+      }
+      // Match problems
+      if (mod.problems) {
+        mod.problems.forEach(prob => {
+          if (prob.title.toLowerCase().includes(q) || (prob.l1 && prob.l1.toLowerCase().includes(q)) || (prob.l2 && prob.l2.toLowerCase().includes(q)) || (prob.l3 && prob.l3.toLowerCase().includes(q))) {
+            hits.push({
+              title: `${prob.number} ${prob.title}`,
+              snippet: `${prob.category} — ${(prob.l1 || '').substring(0, 140)}...`,
+              link: `#${prob.id}`
+            });
+          }
+        });
+      }
+
+      // Match studio challenges & schemas
+      if (mod.studioChallenges) {
+        mod.studioChallenges.forEach(c => {
+          const schemaMatch = c.databaseSchemas && c.databaseSchemas.some(s => s.tableName.toLowerCase().includes(q) || s.description.toLowerCase().includes(q));
+          if (c.appName.toLowerCase().includes(q) || c.overview.toLowerCase().includes(q) || c.tag.toLowerCase().includes(q) || schemaMatch) {
+            hits.push({
+              title: `المختبر العملي: ${c.appName}`,
+              snippet: `${c.tag} — ${c.overview.substring(0, 140)}...`,
+              link: `#${c.id}`
+            });
+          }
+        });
+      }
+
+      // Match Code Lab Algorithms
+      if (mod.algorithms) {
+        mod.algorithms.forEach(a => {
+          if (a.name.toLowerCase().includes(q) || a.description.toLowerCase().includes(q) || a.category.toLowerCase().includes(q)) {
+            hits.push({
+              title: `مختبر الأكواد: ${a.name}`,
+              snippet: `${a.category} — ${a.description.substring(0, 140)}...`,
+              link: `#${a.id}`
+            });
+          }
+        });
+      }
+
+      // Match Interview Questions
+      if (mod.isInterviewQuestions && typeof InterviewQuestionsData !== 'undefined') {
+        InterviewQuestionsData.forEach(item => {
+          const matchTitle = item.title.toLowerCase().includes(q) || item.titleEn.toLowerCase().includes(q);
+          const matchQ = item.question.toLowerCase().includes(q);
+          const matchCat = item.category.toLowerCase().includes(q) || item.categoryAr.toLowerCase().includes(q);
+          const matchKw = item.keywords && item.keywords.some(kw => kw.toLowerCase().includes(q));
+
+          if (matchTitle || matchQ || matchCat || matchKw) {
+            hits.push({
+              title: `سؤال مقابلة (${item.difficultyLabel}): ${item.title}`,
+              snippet: `${item.categoryAr} — ${item.question.substring(0, 140)}...`,
+              link: `#${item.id}`
+            });
+          }
+        });
+      }
+    });
+
+    if (hits.length === 0) {
+      searchPane.innerHTML = `
+        <div style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
+          <div style="font-size: 0.95rem; font-weight: 600;">${this.t('noResultsFor', query)}</div>
+        </div>
+      `;
+    } else {
+      searchPane.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+          <h3 style="font-size: 1.1rem; color: var(--color-primary);">
+            ${this.t('searchResultsTitle', hits.length)}
+          </h3>
+          <button class="action-btn-sm" onclick="App.clearSearch()">${this.t('closeSearchResults')}</button>
+        </div>
+        ${hits.map(hit => `
+          <div class="search-hit-item" onclick="window.location.hash='${hit.link}'; App.clearSearch();">
+            <div class="search-hit-title">${hit.title}</div>
+            <div class="search-hit-snippet">${hit.snippet}</div>
+          </div>
+        `).join('')}
+      `;
+    }
+  },
+
+  clearSearch() {
+    const searchInput = document.getElementById('globalSearchInput');
+    if (searchInput) {
+      searchInput.value = '';
+    }
+    const clearBtn = document.getElementById('searchClearBtn');
+    if (clearBtn) {
+      clearBtn.style.display = 'none';
+    }
+    const searchPane = document.getElementById('searchOverlayPane');
+    const mainContent = document.getElementById('mainContentArea');
+    if (searchPane) searchPane.classList.remove('active');
+    if (mainContent) mainContent.style.display = 'block';
+  }
+};
+
+// Expose App globally
+window.App = App;
+
+// Initialize on DOM Ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => App.init());
+} else {
+  App.init();
+}
