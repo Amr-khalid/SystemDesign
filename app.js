@@ -1143,3 +1143,273 @@ const App = {
       </div>
     `;
 
+    container.innerHTML = html;
+
+    // Attach Editor Listeners (Line numbers, Tab indentation, Ctrl+Enter)
+    setTimeout(() => {
+      this.attachCodeEditorListeners();
+      // Auto-run initially to show results
+      this.runCodeSandbox();
+    }, 50);
+  },
+
+  selectAlgorithm(algoId) {
+    this.activeAlgoId = algoId;
+    const mod = SystemDesignData.modules.find(m => m.id === 'module-9');
+    if (mod) this.renderModule(mod);
+  },
+
+  attachCodeEditorListeners() {
+    const textarea = document.getElementById('codeLabTextarea');
+    const gutter = document.getElementById('editorGutter');
+    if (!textarea || !gutter) return;
+
+    const updateGutter = () => {
+      const lines = textarea.value.split('\n').length;
+      gutter.innerHTML = Array.from({ length: lines }, (_, i) => i + 1).join('\n');
+    };
+
+    updateGutter();
+
+    // Sync scroll
+    textarea.addEventListener('scroll', () => {
+      gutter.scrollTop = textarea.scrollTop;
+    });
+
+    // Input changes
+    textarea.addEventListener('input', () => {
+      updateGutter();
+      this.customCodeState[this.activeAlgoId] = textarea.value;
+    });
+
+    // Key handling (Tab indentation & Ctrl+Enter to Run)
+    textarea.addEventListener('keydown', (e) => {
+      // Ctrl + Enter or Cmd + Enter to Run
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        this.runCodeSandbox();
+        return;
+      }
+
+      // Tab Key: Insert 2 spaces
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const val = textarea.value;
+        textarea.value = val.substring(0, start) + '  ' + val.substring(end);
+        textarea.selectionStart = textarea.selectionEnd = start + 2;
+        updateGutter();
+        this.customCodeState[this.activeAlgoId] = textarea.value;
+      }
+    });
+  },
+
+  runCodeSandbox() {
+    const textarea = document.getElementById('codeLabTextarea');
+    const terminal = document.getElementById('terminalOutputBody');
+    const statusBadge = document.getElementById('executionStatusBadge');
+    if (!textarea || !terminal) return;
+
+    const userCode = textarea.value;
+    this.customCodeState[this.activeAlgoId] = userCode;
+
+    terminal.innerHTML = '';
+    const logs = [];
+
+    // Custom Console Interceptor
+    const sandboxConsole = {
+      log: (...args) => {
+        logs.push({ type: 'log', text: args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' ') });
+      },
+      info: (...args) => {
+        logs.push({ type: 'info', text: args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' ') });
+      },
+      warn: (...args) => {
+        logs.push({ type: 'warn', text: args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' ') });
+      },
+      error: (...args) => {
+        logs.push({ type: 'error', text: args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' ') });
+      }
+    };
+
+    const startTime = performance.now();
+    let isError = false;
+
+    try {
+      // Execute in scoped sandbox
+      const sandboxFn = new Function('console', userCode);
+      sandboxFn(sandboxConsole);
+    } catch (err) {
+      isError = true;
+      sandboxConsole.error(`Runtime Error: ${err.message}`);
+    }
+
+    const elapsed = (performance.now() - startTime).toFixed(2);
+
+    // Update Status Badge
+    if (statusBadge) {
+      if (isError) {
+        statusBadge.className = 'execution-status-badge status-error';
+        statusBadge.textContent = `${this.currentLang === 'en' ? 'Execution Error' : 'خطأ في التنفيذ'} (${elapsed}ms)`;
+      } else {
+        statusBadge.className = 'execution-status-badge status-success';
+        statusBadge.textContent = `${this.currentLang === 'en' ? 'Executed Successfully' : 'تم التنفيذ بنجاح'} (${elapsed}ms)`;
+      }
+    }
+
+    // Render Logs in Terminal with Color Coding
+    if (logs.length === 0) {
+      terminal.innerHTML = `<div class="terminal-log-row log-info">// تم تشغيل الكود بنجاح دون طباعة مخرجات. استخدم console.log() لعرض النتائج.</div>`;
+    } else {
+      let outputHtml = '';
+      logs.forEach(log => {
+        let cls = 'log-info';
+        const txt = log.text;
+
+        if (log.type === 'error' || txt.includes('❌') || txt.includes('Error')) cls = 'log-error';
+        else if (log.type === 'warn' || txt.includes('⚠️')) cls = 'log-warn';
+        else if (txt.includes('✅') || txt.includes('🚀') || txt.includes('🎉')) cls = 'log-success';
+        else if (txt.startsWith('===') || txt.startsWith('---')) cls = 'log-header';
+
+        outputHtml += `<div class="terminal-log-row ${cls}">${this.escapeHtml(txt)}</div>`;
+      });
+      terminal.innerHTML = outputHtml;
+    }
+
+    terminal.scrollTop = terminal.scrollHeight;
+  },
+
+  escapeHtml(str) {
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  },
+
+  resetCurrentAlgoCode() {
+    const mod = SystemDesignData.modules.find(m => m.id === 'module-9');
+    if (!mod) return;
+    const algo = mod.algorithms.find(a => a.id === this.activeAlgoId);
+    if (!algo) return;
+
+    delete this.customCodeState[this.activeAlgoId];
+    const textarea = document.getElementById('codeLabTextarea');
+    if (textarea) {
+      textarea.value = algo.code;
+      const gutter = document.getElementById('editorGutter');
+      if (gutter) {
+        const lines = textarea.value.split('\n').length;
+        gutter.innerHTML = Array.from({ length: lines }, (_, i) => i + 1).join('\n');
+      }
+      this.runCodeSandbox();
+    }
+  },
+
+  copyCodeToClipboard() {
+    const textarea = document.getElementById('codeLabTextarea');
+    const btn = document.getElementById('copyCodeBtn');
+    if (!textarea) return;
+
+    navigator.clipboard.writeText(textarea.value).then(() => {
+      if (btn) {
+        const orig = btn.innerHTML;
+        btn.innerHTML = '✓ تم النسخ!';
+        btn.style.color = 'var(--color-success)';
+        setTimeout(() => {
+          btn.innerHTML = orig;
+          btn.style.color = '';
+        }, 1500);
+      }
+    });
+  },
+
+  clearConsoleOutput() {
+    const terminal = document.getElementById('terminalOutputBody');
+    const statusBadge = document.getElementById('executionStatusBadge');
+    if (terminal) {
+      terminal.innerHTML = `<div class="terminal-log-row log-info">// Output cleared. Ready to execute.</div>`;
+    }
+    if (statusBadge) {
+      statusBadge.className = 'execution-status-badge status-ready';
+      statusBadge.textContent = this.t('statusReady');
+    }
+  },
+
+  // ==========================================================================
+  // Interview Questions Bank Renderer (Module 10)
+  // ==========================================================================
+  setQuizDifficultyFilter(difficulty) {
+    this.activeQuizDifficultyFilter = difficulty;
+    const mod = SystemDesignData.modules.find(m => m.id === 'module-10');
+    if (mod) this.renderModule(mod);
+  },
+
+  setQuizCategoryFilter(category) {
+    this.activeQuizCategoryFilter = category;
+    const mod = SystemDesignData.modules.find(m => m.id === 'module-10');
+    if (mod) this.renderModule(mod);
+  },
+
+  toggleQuizHint(id) {
+    if (this.openHints.has(id)) {
+      this.openHints.delete(id);
+    } else {
+      this.openHints.add(id);
+    }
+    const pane = document.getElementById(`hint-pane-${id}`);
+    const arrow = document.getElementById(`hint-arrow-${id}`);
+    if (pane) pane.classList.toggle('show', this.openHints.has(id));
+    if (arrow) arrow.textContent = this.openHints.has(id) ? '▲' : '▼';
+  },
+
+  toggleQuizAnswer(id) {
+    if (this.openAnswers.has(id)) {
+      this.openAnswers.delete(id);
+    } else {
+      this.openAnswers.add(id);
+    }
+    const pane = document.getElementById(`ans-pane-${id}`);
+    const arrow = document.getElementById(`ans-arrow-${id}`);
+    if (pane) pane.classList.toggle('show', this.openAnswers.has(id));
+    if (arrow) arrow.textContent = this.openAnswers.has(id) ? '▲' : '▼';
+  },
+
+  toggleAllQuizAnswers(open) {
+    const questions = typeof InterviewQuestionsData !== 'undefined' ? InterviewQuestionsData : [];
+    questions.forEach(q => {
+      if (open) {
+        this.openAnswers.add(q.id);
+      } else {
+        this.openAnswers.delete(q.id);
+      }
+      const pane = document.getElementById(`ans-pane-${q.id}`);
+      const arrow = document.getElementById(`ans-arrow-${q.id}`);
+      if (pane) pane.classList.toggle('show', open);
+      if (arrow) arrow.textContent = open ? '▲' : '▼';
+    });
+  },
+
+  parseMarkdownSimple(md) {
+    if (!md) return '';
+    let html = md;
+
+    // Headings
+    html = html.replace(/^### (.*$)/gim, '<h4>$1</h4>');
+    html = html.replace(/^## (.*$)/gim, '<h3>$1</h3>');
+
+    // Bold and italics
+    html = html.replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>');
+    html = html.replace(/\*(.*?)\*/gim, '<em>$1</em>');
+
+    // Code blocks
+    html = html.replace(/```([a-z]*)\n([\s\S]*?)```/gim, (match, lang, code) => {
+      return `<pre class="contract-pre" style="margin:0.75rem 0;"><code>${this.escapeHTML(code.trim())}</code></pre>`;
+    });
+
+    // Inline code
+    html = html.replace(/`([^`]+)`/gim, '<code>$1</code>');
+
+    // Markdown tables
