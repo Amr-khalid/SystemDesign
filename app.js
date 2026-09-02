@@ -13,8 +13,165 @@ const App = {
   studioAnswers: {}, // key: `${challengeId}-${stepIndex}` -> optionIndex
   activeAlgoId: 'algo-lru',
   customCodeState: {}, // key: `${algoId}` -> edited code string
+  activeQuizDifficultyFilter: 'all', // 'all', 'easy', 'medium', 'hard', 'expert'
+  activeQuizCategoryFilter: 'all', // 'all', 'system-design', 'react', 'nextjs', 'express'
+  openHints: new Set(),
+  openAnswers: new Set(),
+  currentLang: 'en',
+
+  i18n: {
+    ar: {
+      brandTag: 'Enterprise Edition',
+      searchPlaceholder: 'ابحث في المفاهيم والمسائل والتقنيات...',
+      sidebarTitle: 'محتويات الموسوعة',
+      progressLabel: 'معدل التقدم في المرجع',
+      modulesUnit: 'أقسام',
+      navGroupTitle: 'الأقسام التعليمية الرئيسية',
+      moduleTag: (num) => `القسم ${num} من 10`,
+      levelFilterLabel: 'تصفية المستويات:',
+      allLevels: 'كافة المستويات',
+      level1: 'المستوى 1 (الأساسيات)',
+      level2: 'المستوى 2 (المعمارية)',
+      level3: 'المستوى 3 (Staff+)',
+      openAllSolutions: 'فتح كافة الحلول',
+      collapseAll: 'طي الكل',
+      markModuleRead: 'تحديد القسم كـ مكتمل ✓',
+      unmarkModuleRead: 'إلغاء التحديد كـ مقروء',
+      markStudioRead: 'تحديد الاستوديو كـ مكتمل ✓',
+      markLabRead: 'تحديد المختبر كـ مكتمل ✓',
+      prevModule: '← القسم السابق',
+      nextModule: 'القسم التالي →',
+      backToStart: 'العودة للبداية',
+      diagramHeader: 'المخطط التوضيحي والمعماري للموضوع',
+      sectionDiagram: 'المخطط التوضيحي للقسم',
+      capstoneBadge: 'مثال تطبيقي كبير وشامل (Capstone Example)',
+      scenarioLabel: 'السيناريو المطلوب:',
+      showCapstoneSolution: 'عرض الحل المعماري الكامل والتفاصيل الهندسية',
+      calcTitle: 'المتطلبات والحسابات التقديرية (Back-of-the-envelope)',
+      l1Badge: 'المستوى 1 (الأساسيات): مسار البيانات المبدئي والتخزين',
+      l2Badge: 'المستوى 2 (المعمارية): التوسع، الكاش، وتقسيم البيانات (Sharding)',
+      l3Badge: 'المستوى 3 (Staff+ Edge Cases): التنافس العالي، مقاومة الأعطال، والإنتاج',
+      caseBottleneck: 'التحدي وعنق الزجاجة (The Bottleneck)',
+      caseSolution: 'المعمارية والحل الهندسي (The Architectural Solution)',
+      caseInsight: 'درس الإنتاج (Production Insight):',
+      // Module 10
+      interviewTag: 'القسم 10 من 10: الاستعداد التام لمقابلات العمل',
+      allTracks: 'جميع المسارات',
+      reactTrack: 'محرك وداخليات React',
+      nextTrack: 'معمارية Next.js',
+      expressTrack: 'Express.js & Node Runtime',
+      sdTrack: 'هندسة النظم الموزعة (Core SD)',
+      questionsDisplayed: 'الأسئلة المعروضة',
+      easyStat: 'المستوى التأسيسي (Easy)',
+      medStat: 'المستوى المعماري (Medium)',
+      hardStat: 'المستوى المتقدم (Hard)',
+      expStat: 'مستوى الخبراء (Staff+)',
+      allDifficulties: 'كافة درجات الصعوبة',
+      diffEasy: 'سهل (Foundational)',
+      diffMed: 'متوسط (Architectural)',
+      diffHard: 'متقدم (Systems)',
+      diffExp: 'خبير (Staff+)',
+      openAllAnswers: 'فتح كافة الإجابات',
+      questionNum: (idx) => `سؤال #${idx}`,
+      interviewHints: (n) => `تلميحات توجيهية للمقابلة (${n} نقاط استرشادية)`,
+      modelAnswerTitle: 'الإجابة المعمارية النموذجية الكاملة (Staff+ Model Answer)',
+      keywordsLabel: 'الكلمات المفتاحية:',
+      // Code Lab
+      editorTitle: 'محرر الكود التفاعلي (Interactive JavaScript Editor)',
+      resetCode: 'إعادة ضبط',
+      copyCode: 'نسخ',
+      runCode: 'تشغيل الكود (Run)',
+      terminalTitle: 'نافذة المخرجات وسجلات التنفيذ (Execution Terminal)',
+      statusReady: 'جاهز للتشغيل',
+      clearTerminal: 'مسح الشاشة',
+      runPrompt: '// اضغط على زر "تشغيل الكود (Run)" أو (Ctrl + Enter) لتشغيل الخوارزمية وملاحظة النتائج اللحظية...',
+      // Search
+      noResultsFor: (q) => `لم يتم العثور على نتائج مطابقة لـ "${q}"`,
+      searchResultsTitle: (n) => `نتائج البحث (${n}):`,
+      closeSearchResults: 'إغلاق نتائج البحث'
+    },
+    en: {
+      brandTag: 'Enterprise Edition',
+      searchPlaceholder: 'Search concepts, design problems, architectures...',
+      sidebarTitle: 'Index of Modules',
+      progressLabel: 'Overall Mastery Progress',
+      modulesUnit: 'modules',
+      navGroupTitle: 'Core Learning Curriculum',
+      moduleTag: (num) => `Module ${num} of 10`,
+      levelFilterLabel: 'Filter Levels:',
+      allLevels: 'All Levels',
+      level1: 'Level 1 (Foundations)',
+      level2: 'Level 2 (Architecture)',
+      level3: 'Level 3 (Staff+)',
+      openAllSolutions: 'Open All Solutions',
+      collapseAll: 'Collapse All',
+      markModuleRead: 'Mark as Completed ✓',
+      unmarkModuleRead: 'Unmark as Completed',
+      markStudioRead: 'Mark Studio as Completed ✓',
+      markLabRead: 'Mark Lab as Completed ✓',
+      prevModule: '← Previous Module',
+      nextModule: 'Next Module →',
+      backToStart: 'Back to Start',
+      diagramHeader: 'Architectural System Diagram',
+      sectionDiagram: 'Topic Architecture Diagram',
+      capstoneBadge: 'Comprehensive Capstone Case Study',
+      scenarioLabel: 'Requirements Scenario:',
+      showCapstoneSolution: 'Show Full Architectural Solution & Details',
+      calcTitle: 'Capacity Planning & Calculations (Back-of-the-envelope)',
+      l1Badge: 'Level 1 (Foundations): Initial Flow & Storage Engine',
+      l2Badge: 'Level 2 (Architecture): Scaling, Caching & Partitioning',
+      l3Badge: 'Level 3 (Staff+ Edge Cases): High Concurrency & Fault Tolerance',
+      caseBottleneck: 'The Bottleneck & Constraints',
+      caseSolution: 'The Architectural Solution',
+      caseInsight: 'Production Insight:',
+      // Module 10
+      interviewTag: 'Module 10 of 10: Complete System Design Interview Bank',
+      allTracks: 'All Tracks',
+      reactTrack: 'React Internals & Engine',
+      nextTrack: 'Next.js Architecture',
+      expressTrack: 'Express & Node Runtime',
+      sdTrack: 'Distributed Systems (Core SD)',
+      questionsDisplayed: 'Questions Displayed',
+      easyStat: 'Foundational (Easy)',
+      medStat: 'Architectural (Medium)',
+      hardStat: 'Advanced Systems (Hard)',
+      expStat: 'Staff+ Deep Dive',
+      allDifficulties: 'All Difficulties',
+      diffEasy: 'Easy (Foundational)',
+      diffMed: 'Medium (Architectural)',
+      diffHard: 'Hard (Systems)',
+      diffExp: 'Expert (Staff+)',
+      openAllAnswers: 'Open All Answers',
+      questionNum: (idx) => `Question #${idx}`,
+      interviewHints: (n) => `Interview Guiding Hints (${n} points)`,
+      modelAnswerTitle: 'Staff+ Architectural Model Answer',
+      keywordsLabel: 'Key Technologies & Concepts:',
+      // Code Lab
+      editorTitle: 'Interactive JavaScript Editor',
+      resetCode: 'Reset',
+      copyCode: 'Copy',
+      runCode: 'Run Code',
+      terminalTitle: 'Execution Terminal & Logs',
+      statusReady: 'Ready',
+      clearTerminal: 'Clear Terminal',
+      runPrompt: '// Press "Run Code" or (Ctrl + Enter) to execute and view real-time output...',
+      // Search
+      noResultsFor: (q) => `No matching results found for "${q}"`,
+      searchResultsTitle: (n) => `Search Results (${n}):`,
+      closeSearchResults: 'Close Search Results'
+    }
+  },
+
+  t(key, ...args) {
+    const langDict = this.i18n[this.currentLang] || this.i18n.ar;
+    const val = langDict[key];
+    if (typeof val === 'function') return val(...args);
+    return val || key;
+  },
 
   init() {
+    this.loadTheme();
+    this.loadLanguage();
     this.loadStoredProgress();
     this.loadSidebarState();
     this.bindEvents();
@@ -49,7 +206,78 @@ const App = {
     const fillEl = document.getElementById('progressBarFill');
     const labelEl = document.getElementById('progressText');
     if (fillEl) fillEl.style.width = `${pct}%`;
-    if (labelEl) labelEl.textContent = `${pct}% (${count}/${total} أقسام)`;
+    if (labelEl) labelEl.textContent = `${pct}% (${count}/${total} ${this.t('modulesUnit')})`;
+  },
+
+  loadTheme() {
+    try {
+      const savedTheme = localStorage.getItem('sd_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+    } catch (e) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  },
+
+  loadLanguage() {
+    try {
+      const savedLang = localStorage.getItem('sd_lang') || 'en';
+      this.currentLang = savedLang;
+      document.documentElement.setAttribute('dir', this.currentLang === 'en' ? 'ltr' : 'rtl');
+      document.documentElement.setAttribute('lang', this.currentLang);
+    } catch (e) {
+      this.currentLang = 'en';
+    }
+    this.updateLanguageButton();
+  },
+
+  setLanguage(lang) {
+    if (this.currentLang === lang) return;
+    this.currentLang = lang;
+    try {
+      localStorage.setItem('sd_lang', lang);
+    } catch (e) {}
+    document.documentElement.setAttribute('dir', lang === 'en' ? 'ltr' : 'rtl');
+    document.documentElement.setAttribute('lang', lang);
+    this.updateLanguageButton();
+    this.updateProgressBar();
+    this.renderSidebarNav();
+    
+    // Re-render active module
+    const targetModule = SystemDesignData.modules.find(m => m.id === this.currentModuleId);
+    if (targetModule) {
+      this.renderModule(targetModule);
+    }
+  },
+
+  toggleLanguage() {
+    const nextLang = this.currentLang === 'ar' ? 'en' : 'ar';
+    this.setLanguage(nextLang);
+  },
+
+  updateLanguageButton() {
+    const btn = document.getElementById('langToggleBtn');
+    if (btn) {
+      const textSpan = btn.querySelector('.lang-btn-text');
+      if (textSpan) {
+        textSpan.textContent = this.currentLang === 'ar' ? 'English' : 'العربية';
+      }
+      btn.title = this.currentLang === 'ar' ? 'Switch to English' : 'التبديل إلى العربية';
+    }
+
+    const searchInput = document.getElementById('globalSearchInput');
+    if (searchInput) {
+      searchInput.placeholder = this.t('searchPlaceholder');
+    }
+
+    const sidebarTitle = document.getElementById('sidebarTopTitle');
+    if (sidebarTitle) {
+      sidebarTitle.textContent = this.t('sidebarTitle');
+    }
+
+    const progressLabel = document.getElementById('progressLabelText');
+    if (progressLabel) {
+      progressLabel.textContent = this.t('progressLabel');
+    }
   },
 
   loadSidebarState() {
@@ -146,6 +374,12 @@ const App = {
       clearBtn.addEventListener('click', () => this.clearSearch());
     }
 
+    // Language toggle
+    const langBtn = document.getElementById('langToggleBtn');
+    if (langBtn) {
+      langBtn.addEventListener('click', () => this.toggleLanguage());
+    }
+
     // Theme toggle
     const themeBtn = document.getElementById('themeToggleBtn');
     if (themeBtn) {
@@ -161,7 +395,7 @@ const App = {
   },
 
   toggleTheme() {
-    const current = document.documentElement.getAttribute('data-theme') || 'light';
+    const current = document.documentElement.getAttribute('data-theme') || 'dark';
     const next = current === 'dark' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', next);
     try {
@@ -200,6 +434,10 @@ const App = {
           this.activeAlgoId = hash;
           break;
         }
+        if (m.isInterviewQuestions && typeof InterviewQuestionsData !== 'undefined' && InterviewQuestionsData.some(q => q.id === hash)) {
+          targetModule = m;
+          break;
+        }
       }
     }
 
@@ -229,15 +467,25 @@ const App = {
     const container = document.getElementById('navGroupsContainer');
     if (!container) return;
 
-    let html = `<div class="nav-group-header">الأقسام التعليمية الرئيسية</div>`;
+    let html = `<div class="nav-group-header">${this.t('navGroupTitle')}</div>`;
 
     SystemDesignData.modules.forEach((mod) => {
-      const itemCount = mod.sections ? mod.sections.length : (mod.problems ? mod.problems.length : (mod.caseStudies ? mod.caseStudies.length : (mod.studioChallenges ? mod.studioChallenges.length : (mod.algorithms ? mod.algorithms.length : 0))));
+      let itemCount = 0;
+      if (mod.sections) itemCount = mod.sections.length;
+      else if (mod.problems) itemCount = mod.problems.length;
+      else if (mod.caseStudies) itemCount = mod.caseStudies.length;
+      else if (mod.studioChallenges) itemCount = mod.studioChallenges.length;
+      else if (mod.algorithms) itemCount = mod.algorithms.length;
+      else if (mod.isInterviewQuestions && typeof InterviewQuestionsData !== 'undefined') itemCount = InterviewQuestionsData.length;
+
       const isCompleted = this.readModules.has(mod.id);
+      const titleDisplay = this.currentLang === 'en'
+        ? mod.title.split('—')[0].trim()
+        : (mod.title.includes('—') ? mod.title.split('—')[1].trim() : mod.title);
 
       html += `
         <a href="#${mod.id}" class="nav-link ${mod.id === this.currentModuleId ? 'active' : ''}" data-id="${mod.id}">
-          <span>${mod.number}. ${mod.title.split('—')[0].trim()}</span>
+          <span>${mod.number}. ${titleDisplay}</span>
           <span class="nav-badge-count">${itemCount} ${isCompleted ? '✓' : ''}</span>
         </a>
       `;
@@ -284,29 +532,35 @@ const App = {
       return;
     }
 
+    // Check if it's the Interview Questions Bank (Module 10)
+    if (mod.isInterviewQuestions) {
+      this.renderInterviewQuestionsModule(mod, container, isRead, prevMod, nextMod);
+      return;
+    }
+
     let contentHtml = `
       <div class="content-wrapper" data-level-filter="${this.activeLevelFilter}">
         <!-- Module Header -->
         <div class="module-header">
-          <span class="module-tag">القسم ${mod.number} من 9</span>
-          <h1 class="module-title">${mod.title}</h1>
+          <span class="module-tag">${this.t('moduleTag', mod.number)}</span>
+          <h1 class="module-title">${this.currentLang === 'en' ? (mod.title.split('—')[0].trim()) : mod.title}</h1>
           <p class="module-subtitle">${mod.subtitle}</p>
         </div>
 
         <!-- Level Filter & Controls Bar -->
         <div class="view-controls-bar">
           <div class="level-filters">
-            <span style="font-size:0.825rem; font-weight:700; color:var(--text-subtle); margin-left:0.5rem;">تصفية المستويات:</span>
-            <button class="filter-btn ${this.activeLevelFilter === 'all' ? 'active' : ''}" data-level="all" onclick="App.setLevelFilter('all')">كافة المستويات</button>
-            <button class="filter-btn ${this.activeLevelFilter === '1' ? 'active' : ''}" data-level="1" onclick="App.setLevelFilter('1')">المستوى 1 (الأساسيات)</button>
-            <button class="filter-btn ${this.activeLevelFilter === '2' ? 'active' : ''}" data-level="2" onclick="App.setLevelFilter('2')">المستوى 2 (المعمارية)</button>
-            <button class="filter-btn ${this.activeLevelFilter === '3' ? 'active' : ''}" data-level="3" onclick="App.setLevelFilter('3')">المستوى 3 (Staff+)</button>
+            <span style="font-size:0.825rem; font-weight:700; color:var(--text-subtle); margin-left:0.5rem; margin-right:0.5rem;">${this.t('levelFilterLabel')}</span>
+            <button class="filter-btn ${this.activeLevelFilter === 'all' ? 'active' : ''}" data-level="all" onclick="App.setLevelFilter('all')">${this.t('allLevels')}</button>
+            <button class="filter-btn ${this.activeLevelFilter === '1' ? 'active' : ''}" data-level="1" onclick="App.setLevelFilter('1')">${this.t('level1')}</button>
+            <button class="filter-btn ${this.activeLevelFilter === '2' ? 'active' : ''}" data-level="2" onclick="App.setLevelFilter('2')">${this.t('level2')}</button>
+            <button class="filter-btn ${this.activeLevelFilter === '3' ? 'active' : ''}" data-level="3" onclick="App.setLevelFilter('3')">${this.t('level3')}</button>
           </div>
           <div class="quick-actions">
-            <button class="action-btn-sm" onclick="App.toggleAllSolutions(true)">فتح كافة الحلول</button>
-            <button class="action-btn-sm" onclick="App.toggleAllSolutions(false)">طي الكل</button>
+            <button class="action-btn-sm" onclick="App.toggleAllSolutions(true)">${this.t('openAllSolutions')}</button>
+            <button class="action-btn-sm" onclick="App.toggleAllSolutions(false)">${this.t('collapseAll')}</button>
             <button class="action-btn-sm" data-mark-read="${mod.id}" onclick="App.toggleMarkRead('${mod.id}')">
-              ${isRead ? 'إلغاء التحديد كـ مقروء' : 'تحديد القسم كـ مكتمل ✓'}
+              ${isRead ? this.t('unmarkModuleRead') : this.t('markModuleRead')}
             </button>
           </div>
         </div>
@@ -357,15 +611,15 @@ const App = {
       <div class="module-footer-nav">
         ${prevMod ? `
           <a href="#${prevMod.id}" class="nav-page-btn">
-            <span class="nav-page-label">← القسم السابق</span>
-            <span class="nav-page-title">${prevMod.number}. ${prevMod.title.split('—')[0]}</span>
+            <span class="nav-page-label">${this.t('prevModule')}</span>
+            <span class="nav-page-title">${prevMod.number}. ${this.currentLang === 'en' ? prevMod.title.split('—')[0].trim() : (prevMod.title.includes('—') ? prevMod.title.split('—')[1].trim() : prevMod.title)}</span>
           </a>
         ` : `<div></div>`}
         
         ${nextMod ? `
-          <a href="#${nextMod.id}" class="nav-page-btn" style="text-align: left;">
-            <span class="nav-page-label">القسم التالي →</span>
-            <span class="nav-page-title">${nextMod.number}. ${nextMod.title.split('—')[0]}</span>
+          <a href="#${nextMod.id}" class="nav-page-btn">
+            <span class="nav-page-label">${this.t('nextModule')}</span>
+            <span class="nav-page-title">${nextMod.number}. ${this.currentLang === 'en' ? nextMod.title.split('—')[0].trim() : (nextMod.title.includes('—') ? nextMod.title.split('—')[1].trim() : nextMod.title)}</span>
           </a>
         ` : `<div></div>`}
       </div>
@@ -447,7 +701,7 @@ const App = {
               <h2 class="challenge-app-title" style="margin-top:0.4rem;">${activeChallenge.appName}</h2>
             </div>
             <button class="action-btn-sm" data-mark-read="${mod.id}" onclick="App.toggleMarkRead('${mod.id}')">
-              ${isRead ? 'إلغاء التحديد كـ مقروء' : 'تحديد الاستوديو كـ مكتمل ✓'}
+              ${isRead ? this.t('unmarkModuleRead') : this.t('markStudioRead')}
             </button>
           </div>
 
@@ -580,7 +834,7 @@ const App = {
                   </div>
 
                   <div class="db-replication-note">
-                    <strong>⚡ استراتيجية التكرار والتوافرية العالية:</strong> ${activeChallenge.databaseArchitecture.replicationStrategy}
+                    <strong>استراتيجية التكرار والتوافرية العالية:</strong> ${activeChallenge.databaseArchitecture.replicationStrategy}
                   </div>
                 </div>
               ` : ''}
@@ -653,7 +907,7 @@ const App = {
                       <div class="schema-ddl-wrapper" id="ddl-box-${activeChallenge.id}-${sIdx}" style="display:none;">
                         <div class="ddl-header">
                           <span>نص تعريف الجدول (DDL / Structure Definition)</span>
-                          <button class="ddl-copy-btn" onclick="App.copySnippetText(this, \`${encodeURIComponent(schema.ddl)}\`)">نسخ الكود 📋</button>
+                          <button class="ddl-copy-btn" onclick="App.copySnippetText(this, \`${encodeURIComponent(schema.ddl)}\`)">نسخ الكود</button>
                         </div>
                         <pre class="ddl-pre"><code>${this.escapeHTML(schema.ddl)}</code></pre>
                       </div>
@@ -711,7 +965,7 @@ const App = {
                       <h4 style="margin:0.25rem 0 0 0; font-size:1rem; font-weight:800; color:var(--text-main);">${activeChallenge.dataExchange.apiContractSample.title}</h4>
                       <span class="api-contract-method">${activeChallenge.dataExchange.apiContractSample.type}</span>
                     </div>
-                    <button class="ddl-copy-btn" onclick="App.copySnippetText(this, \`${encodeURIComponent(activeChallenge.dataExchange.apiContractSample.snippet)}\`)">نسخ العقد 📋</button>
+                    <button class="ddl-copy-btn" onclick="App.copySnippetText(this, \`${encodeURIComponent(activeChallenge.dataExchange.apiContractSample.snippet)}\`)">نسخ العقد</button>
                   </div>
                   <pre class="contract-pre"><code>${this.escapeHTML(activeChallenge.dataExchange.apiContractSample.snippet)}</code></pre>
                 </div>
@@ -810,7 +1064,7 @@ const App = {
             <div style="display:flex; align-items:center; gap:0.5rem;">
               <span class="topic-category-tag">${activeAlgo.category}</span>
               <button class="action-btn-sm" data-mark-read="${mod.id}" onclick="App.toggleMarkRead('${mod.id}')">
-                ${isRead ? 'إلغاء التحديد كـ مقروء' : 'تحديد المختبر كـ مكتمل ✓'}
+                ${isRead ? this.t('unmarkModuleRead') : this.t('markLabRead')}
               </button>
             </div>
           </div>
@@ -823,18 +1077,18 @@ const App = {
           <div class="editor-card">
             <div class="panel-header-bar">
               <div class="panel-title-group">
-                <span>💻 محرر الكود التفاعلي (Interactive JavaScript Editor)</span>
+                <span>محرر الكود التفاعلي (Interactive JavaScript Editor)</span>
                 <span class="brand-badge" style="font-family:var(--font-mono); font-size:0.7rem;">ES6+ Runtime</span>
               </div>
               <div class="panel-actions-group">
                 <button class="btn-editor-action" onclick="App.resetCurrentAlgoCode()" title="استعادة الكود الأصلي للخوارزمية">
-                  ↺ إعادة ضبط
+                  إعادة ضبط
                 </button>
                 <button class="btn-editor-action" id="copyCodeBtn" onclick="App.copyCodeToClipboard()" title="نسخ الكود">
-                  📋 نسخ
+                  نسخ
                 </button>
                 <button class="btn-editor-action btn-run-code" onclick="App.runCodeSandbox()" title="تشغيل الكود (Ctrl + Enter)">
-                  ▶ تشغيل الكود (Run)
+                  تشغيل الكود (Run)
                 </button>
               </div>
             </div>
@@ -849,18 +1103,18 @@ const App = {
           <div class="terminal-card">
             <div class="panel-header-bar">
               <div class="panel-title-group">
-                <span>📟 نافذة المخرجات وسجلات التنفيذ (Execution Terminal)</span>
-                <span class="execution-status-badge status-ready" id="executionStatusBadge">⚡ جاهز للتشغيل</span>
+                <span>نافذة المخرجات وسجلات التنفيذ (Execution Terminal)</span>
+                <span class="execution-status-badge status-ready" id="executionStatusBadge">جاهز للتشغيل</span>
               </div>
               <div class="panel-actions-group">
                 <button class="btn-editor-action" onclick="App.clearConsoleOutput()" title="مسح سجلات الشاشة">
-                  🗑️ مسح الشاشة
+                  مسح الشاشة
                 </button>
               </div>
             </div>
 
             <div class="terminal-body" id="terminalOutputBody">
-              <div class="terminal-log-row log-info">// اضغط على زر "▶ تشغيل الكود (Run)" أو (Ctrl + Enter) لتشغيل الخوارزمية وملاحظة النتائج اللحظية...</div>
+              <div class="terminal-log-row log-info">// اضغط على زر "تشغيل الكود (Run)" أو (Ctrl + Enter) لتشغيل الخوارزمية وملاحظة النتائج اللحظية...</div>
             </div>
           </div>
         </div>
@@ -874,604 +1128,18 @@ const App = {
             </a>
           ` : `<div></div>`}
           
-          <a href="#module-1" class="nav-page-btn" style="text-align: left;">
-            <span class="nav-page-label">العودة للبداية</span>
-            <span class="nav-page-title">1. المسار السريع ←</span>
-          </a>
+          ${nextMod ? `
+            <a href="#${nextMod.id}" class="nav-page-btn" style="text-align: left;">
+              <span class="nav-page-label">القسم التالي →</span>
+              <span class="nav-page-title">${nextMod.number}. ${nextMod.title.split('—')[0]}</span>
+            </a>
+          ` : `
+            <a href="#module-10" class="nav-page-btn" style="text-align: left;">
+              <span class="nav-page-label">القسم التالي →</span>
+              <span class="nav-page-title">10. بنك أسئلة المقابلات</span>
+            </a>
+          `}
         </div>
       </div>
     `;
 
-    container.innerHTML = html;
-
-    // Attach Editor Listeners (Line numbers, Tab indentation, Ctrl+Enter)
-    setTimeout(() => {
-      this.attachCodeEditorListeners();
-      // Auto-run initially to show results
-      this.runCodeSandbox();
-    }, 50);
-  },
-
-  selectAlgorithm(algoId) {
-    this.activeAlgoId = algoId;
-    const mod = SystemDesignData.modules.find(m => m.id === 'module-9');
-    if (mod) this.renderModule(mod);
-  },
-
-  attachCodeEditorListeners() {
-    const textarea = document.getElementById('codeLabTextarea');
-    const gutter = document.getElementById('editorGutter');
-    if (!textarea || !gutter) return;
-
-    const updateGutter = () => {
-      const lines = textarea.value.split('\n').length;
-      gutter.innerHTML = Array.from({ length: lines }, (_, i) => i + 1).join('\n');
-    };
-
-    updateGutter();
-
-    // Sync scroll
-    textarea.addEventListener('scroll', () => {
-      gutter.scrollTop = textarea.scrollTop;
-    });
-
-    // Input changes
-    textarea.addEventListener('input', () => {
-      updateGutter();
-      this.customCodeState[this.activeAlgoId] = textarea.value;
-    });
-
-    // Key handling (Tab indentation & Ctrl+Enter to Run)
-    textarea.addEventListener('keydown', (e) => {
-      // Ctrl + Enter or Cmd + Enter to Run
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-        e.preventDefault();
-        this.runCodeSandbox();
-        return;
-      }
-
-      // Tab Key: Insert 2 spaces
-      if (e.key === 'Tab') {
-        e.preventDefault();
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const val = textarea.value;
-        textarea.value = val.substring(0, start) + '  ' + val.substring(end);
-        textarea.selectionStart = textarea.selectionEnd = start + 2;
-        updateGutter();
-        this.customCodeState[this.activeAlgoId] = textarea.value;
-      }
-    });
-  },
-
-  runCodeSandbox() {
-    const textarea = document.getElementById('codeLabTextarea');
-    const terminal = document.getElementById('terminalOutputBody');
-    const statusBadge = document.getElementById('executionStatusBadge');
-    if (!textarea || !terminal) return;
-
-    const userCode = textarea.value;
-    this.customCodeState[this.activeAlgoId] = userCode;
-
-    terminal.innerHTML = '';
-    const logs = [];
-
-    // Custom Console Interceptor
-    const sandboxConsole = {
-      log: (...args) => {
-        logs.push({ type: 'log', text: args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' ') });
-      },
-      info: (...args) => {
-        logs.push({ type: 'info', text: args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' ') });
-      },
-      warn: (...args) => {
-        logs.push({ type: 'warn', text: args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' ') });
-      },
-      error: (...args) => {
-        logs.push({ type: 'error', text: args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' ') });
-      }
-    };
-
-    const startTime = performance.now();
-    let isError = false;
-
-    try {
-      // Execute in scoped sandbox
-      const sandboxFn = new Function('console', userCode);
-      sandboxFn(sandboxConsole);
-    } catch (err) {
-      isError = true;
-      sandboxConsole.error(`Runtime Error: ${err.message}`);
-    }
-
-    const elapsed = (performance.now() - startTime).toFixed(2);
-
-    // Update Status Badge
-    if (statusBadge) {
-      if (isError) {
-        statusBadge.className = 'execution-status-badge status-error';
-        statusBadge.textContent = `❌ خطأ في التنفيذ (${elapsed}ms)`;
-      } else {
-        statusBadge.className = 'execution-status-badge status-success';
-        statusBadge.textContent = `✅ تم التنفيذ بنجاح (${elapsed}ms)`;
-      }
-    }
-
-    // Render Logs in Terminal with Color Coding
-    if (logs.length === 0) {
-      terminal.innerHTML = `<div class="terminal-log-row log-info">// تم تشغيل الكود بنجاح دون طباعة مخرجات. استخدم console.log() لعرض النتائج.</div>`;
-    } else {
-      let outputHtml = '';
-      logs.forEach(log => {
-        let cls = 'log-info';
-        const txt = log.text;
-
-        if (log.type === 'error' || txt.includes('❌') || txt.includes('Error')) cls = 'log-error';
-        else if (log.type === 'warn' || txt.includes('⚠️')) cls = 'log-warn';
-        else if (txt.includes('✅') || txt.includes('🚀') || txt.includes('🎉')) cls = 'log-success';
-        else if (txt.startsWith('===') || txt.startsWith('---')) cls = 'log-header';
-
-        outputHtml += `<div class="terminal-log-row ${cls}">${this.escapeHtml(txt)}</div>`;
-      });
-      terminal.innerHTML = outputHtml;
-    }
-
-    terminal.scrollTop = terminal.scrollHeight;
-  },
-
-  escapeHtml(str) {
-    return str
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
-  },
-
-  resetCurrentAlgoCode() {
-    const mod = SystemDesignData.modules.find(m => m.id === 'module-9');
-    if (!mod) return;
-    const algo = mod.algorithms.find(a => a.id === this.activeAlgoId);
-    if (!algo) return;
-
-    delete this.customCodeState[this.activeAlgoId];
-    const textarea = document.getElementById('codeLabTextarea');
-    if (textarea) {
-      textarea.value = algo.code;
-      const gutter = document.getElementById('editorGutter');
-      if (gutter) {
-        const lines = textarea.value.split('\n').length;
-        gutter.innerHTML = Array.from({ length: lines }, (_, i) => i + 1).join('\n');
-      }
-      this.runCodeSandbox();
-    }
-  },
-
-  copyCodeToClipboard() {
-    const textarea = document.getElementById('codeLabTextarea');
-    const btn = document.getElementById('copyCodeBtn');
-    if (!textarea) return;
-
-    navigator.clipboard.writeText(textarea.value).then(() => {
-      if (btn) {
-        const orig = btn.innerHTML;
-        btn.innerHTML = '✓ تم النسخ!';
-        btn.style.color = 'var(--color-success)';
-        setTimeout(() => {
-          btn.innerHTML = orig;
-          btn.style.color = '';
-        }, 1500);
-      }
-    });
-  },
-
-  clearConsoleOutput() {
-    const terminal = document.getElementById('terminalOutputBody');
-    const statusBadge = document.getElementById('executionStatusBadge');
-    if (terminal) {
-      terminal.innerHTML = `<div class="terminal-log-row log-info">// تم مسح الشاشة. اضغط على "▶ تشغيل الكود" للبدء مجدداً...</div>`;
-    }
-    if (statusBadge) {
-      statusBadge.className = 'execution-status-badge status-ready';
-      statusBadge.textContent = `⚡ جاهز للتشغيل`;
-    }
-  },
-
-  renderSectionCard(sec) {
-    let html = `
-      <div class="topic-card" id="${sec.id}">
-        <div class="topic-card-header">
-          <div>
-            <h2 class="topic-title">${sec.title}</h2>
-          </div>
-          <span class="topic-category-tag">${sec.number}</span>
-        </div>
-        <p class="topic-description">${sec.description}</p>
-    `;
-
-    // Inline Diagram for Section
-    if (sec.diagramId && SystemDesignDiagrams[sec.diagramId]) {
-      html += `
-        <div class="diagram-container-card" style="margin: 1rem 0;">
-          <div class="diagram-header">
-            <span class="diagram-caption">المخطط التوضيحي للقسم</span>
-          </div>
-          ${SystemDesignDiagrams.render(sec.diagramId)}
-        </div>
-      `;
-    }
-
-    // Table if present
-    if (sec.table) {
-      html += `
-        <div class="table-responsive">
-          <table class="sd-table">
-            <thead>
-              <tr>
-                ${sec.table.headers.map(h => `<th>${h}</th>`).join('')}
-              </tr>
-            </thead>
-            <tbody>
-              ${sec.table.rows.map(row => `
-                <tr>
-                  ${row.map(cell => `<td>${cell}</td>`).join('')}
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>
-      `;
-    }
-
-    // Three Levels Progression
-    if (sec.levels) {
-      html += `<div class="levels-container">`;
-      if (sec.levels.l1) {
-        html += `
-          <div class="level-row level-1">
-            <span class="level-badge">${sec.levels.l1.badge}</span>
-            <p class="level-text">${sec.levels.l1.text}</p>
-          </div>
-        `;
-      }
-      if (sec.levels.l2) {
-        html += `
-          <div class="level-row level-2">
-            <span class="level-badge">${sec.levels.l2.badge}</span>
-            <p class="level-text">${sec.levels.l2.text}</p>
-          </div>
-        `;
-      }
-      if (sec.levels.l3) {
-        html += `
-          <div class="level-row level-3">
-            <span class="level-badge">${sec.levels.l3.badge}</span>
-            <p class="level-text">${sec.levels.l3.text}</p>
-          </div>
-        `;
-      }
-      html += `</div>`;
-    }
-
-    html += `</div>`;
-    return html;
-  },
-
-  renderProblemCard(prob) {
-    let html = `
-      <div class="topic-card" id="${prob.id}">
-        <div class="topic-card-header">
-          <div>
-            <h2 class="topic-title">${prob.number} ${prob.title}</h2>
-          </div>
-          <span class="topic-category-tag">${prob.category}</span>
-        </div>
-
-        <!-- Calculations Callout -->
-        <div class="calc-box">
-          <div class="calc-box-title">المتطلبات والحسابات التقديرية (Back-of-the-envelope)</div>
-          <div class="calc-box-content">${prob.calculations}</div>
-        </div>
-    `;
-
-    // Diagram if available
-    if (prob.diagramId && SystemDesignDiagrams[prob.diagramId]) {
-      html += `
-        <div class="diagram-container-card" style="margin: 1rem 0;">
-          <div class="diagram-header">
-            <span class="diagram-caption">معمارية النظام: ${prob.title.split('—')[0]}</span>
-          </div>
-          ${SystemDesignDiagrams.render(prob.diagramId)}
-        </div>
-      `;
-    }
-
-    // Three Levels
-    html += `<div class="levels-container">`;
-    if (prob.l1) {
-      html += `
-        <div class="level-row level-1">
-          <span class="level-badge">المستوى 1 (الأساسيات): مسار البيانات المبدئي والتخزين</span>
-          <p class="level-text">${prob.l1}</p>
-        </div>
-      `;
-    }
-    if (prob.l2) {
-      html += `
-        <div class="level-row level-2">
-          <span class="level-badge">المستوى 2 (المعمارية): التوسع، الكاش، وتقسيم البيانات (Sharding)</span>
-          <p class="level-text">${prob.l2}</p>
-        </div>
-      `;
-    }
-    if (prob.l3) {
-      html += `
-        <div class="level-row level-3">
-          <span class="level-badge">المستوى 3 (Staff+ Edge Cases): التنافس العالي، مقاومة الأعطال، والإنتاج</span>
-          <p class="level-text">${prob.l3}</p>
-        </div>
-      `;
-    }
-    html += `</div></div>`;
-    return html;
-  },
-
-  renderCaseStudyCard(cs) {
-    return `
-      <div class="case-card" id="${cs.id}">
-        <div class="case-company-header">
-          <h2 class="topic-title">${cs.title}</h2>
-          <span class="company-pill">${cs.company}</span>
-        </div>
-
-        <div class="case-section-block">
-          <div class="case-subtitle">التحدي وعنق الزجاجة (The Bottleneck)</div>
-          <p class="case-body">${cs.problem}</p>
-        </div>
-
-        <div class="case-section-block">
-          <div class="case-subtitle">المعمارية والحل الهندسي (The Architectural Solution)</div>
-          <p class="case-body">${cs.solution}</p>
-        </div>
-
-        <div class="case-insight">
-          <strong>درس الإنتاج (Production Insight):</strong> ${cs.productionInsight}
-        </div>
-      </div>
-    `;
-  },
-
-  renderCapstoneBlock(capstone, moduleId) {
-    const solutionId = `sol-${moduleId}`;
-    return `
-      <div class="capstone-container">
-        <div class="capstone-badge">مثال تطبيقي كبير وشامل (Capstone Example)</div>
-        <h2 class="capstone-title">${capstone.title}</h2>
-        <div class="capstone-scenario">
-          <strong>السيناريو المطلوب:</strong> ${capstone.scenario}
-        </div>
-
-        <div class="hidden-solution-wrapper">
-          <button class="solution-toggle-btn" onclick="App.toggleSolution('${solutionId}')">
-            <span>عرض الحل المعماري الكامل والتفاصيل الهندسية</span>
-            <span class="toggle-arrow" id="arrow-${solutionId}">▼</span>
-          </button>
-          <div class="hidden-solution-content" id="${solutionId}">
-            <p style="color:var(--text-subtle); margin-bottom:1rem; font-weight:600;">${capstone.hiddenSolution.summary}</p>
-            ${capstone.hiddenSolution.steps.map(step => `
-              <div class="solution-step">
-                <div class="solution-step-title">${step.title}</div>
-                <div class="solution-step-body">${step.content}</div>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      </div>
-    `;
-  },
-
-  // Toggle single solution accordion
-  toggleSolution(id) {
-    const content = document.getElementById(id);
-    const arrow = document.getElementById(`arrow-${id}`);
-    if (!content) return;
-    const isOpen = content.classList.contains('open');
-    if (isOpen) {
-      content.classList.remove('open');
-      if (arrow) arrow.style.transform = 'rotate(0deg)';
-    } else {
-      content.classList.add('open');
-      if (arrow) arrow.style.transform = 'rotate(180deg)';
-    }
-  },
-
-  // Expand or Collapse All Solutions on page
-  toggleAllSolutions(open) {
-    document.querySelectorAll('.hidden-solution-content').forEach(content => {
-      if (open) {
-        content.classList.add('open');
-      } else {
-        content.classList.remove('open');
-      }
-    });
-    document.querySelectorAll('.toggle-arrow').forEach(arrow => {
-      arrow.style.transform = open ? 'rotate(180deg)' : 'rotate(0deg)';
-    });
-  },
-
-  setLevelFilter(level) {
-    this.activeLevelFilter = level;
-    
-    // Update data attribute on wrapper for instantaneous CSS-based filtering
-    const wrapper = document.querySelector('.content-wrapper');
-    if (wrapper) {
-      wrapper.setAttribute('data-level-filter', level);
-    }
-
-    // Update active class on filter buttons
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-      const btnLevel = btn.getAttribute('data-level');
-      if (btnLevel === level) {
-        btn.classList.add('active');
-      } else {
-        btn.classList.remove('active');
-      }
-    });
-  },
-
-  toggleMarkRead(modId) {
-    if (this.readModules.has(modId)) {
-      this.readModules.delete(modId);
-    } else {
-      this.readModules.add(modId);
-    }
-    this.saveProgress();
-    this.renderSidebarNav();
-    
-    // Update any mark read button in view immediately
-    const isRead = this.readModules.has(modId);
-    document.querySelectorAll(`[data-mark-read="${modId}"]`).forEach(btn => {
-      if (modId === 'module-8') {
-        btn.textContent = isRead ? 'إلغاء التحديد كـ مقروء' : 'تحديد الاستوديو كـ مكتمل ✓';
-      } else if (modId === 'module-9') {
-        btn.textContent = isRead ? 'إلغاء التحديد كـ مقروء' : 'تحديد المختبر كـ مكتمل ✓';
-      } else {
-        btn.textContent = isRead ? 'إلغاء التحديد كـ مقروء' : 'تحديد القسم كـ مكتمل ✓';
-      }
-    });
-  },
-
-  handleSearch(query) {
-    const q = query.trim().toLowerCase();
-    const searchPane = document.getElementById('searchOverlayPane');
-    const mainContent = document.getElementById('mainContentArea');
-    const clearBtn = document.getElementById('searchClearBtn');
-
-    if (clearBtn) {
-      clearBtn.style.display = q ? 'block' : 'none';
-    }
-
-    if (!q) {
-      if (searchPane) searchPane.classList.remove('active');
-      if (mainContent) mainContent.style.display = 'block';
-      return;
-    }
-
-    if (mainContent) mainContent.style.display = 'none';
-    if (!searchPane) return;
-    searchPane.classList.add('active');
-
-    const hits = [];
-
-    SystemDesignData.modules.forEach(mod => {
-      // Match module
-      if (mod.title.toLowerCase().includes(q) || mod.subtitle.toLowerCase().includes(q)) {
-        hits.push({
-          title: `${mod.number}. ${mod.title}`,
-          snippet: mod.subtitle,
-          link: `#${mod.id}`
-        });
-      }
-      // Match sections
-      if (mod.sections) {
-        mod.sections.forEach(sec => {
-          if (sec.title.toLowerCase().includes(q) || sec.description.toLowerCase().includes(q)) {
-            hits.push({
-              title: `${sec.number} ${sec.title}`,
-              snippet: sec.description,
-              link: `#${sec.id}`
-            });
-          }
-        });
-      }
-      // Match problems
-      if (mod.problems) {
-        mod.problems.forEach(prob => {
-          if (prob.title.toLowerCase().includes(q) || (prob.l1 && prob.l1.toLowerCase().includes(q)) || (prob.l2 && prob.l2.toLowerCase().includes(q)) || (prob.l3 && prob.l3.toLowerCase().includes(q))) {
-            hits.push({
-              title: `${prob.number} ${prob.title}`,
-              snippet: `${prob.category} — ${(prob.l1 || '').substring(0, 140)}...`,
-              link: `#${prob.id}`
-            });
-          }
-        });
-      }
-
-      // Match studio challenges & schemas
-      if (mod.studioChallenges) {
-        mod.studioChallenges.forEach(c => {
-          const schemaMatch = c.databaseSchemas && c.databaseSchemas.some(s => s.tableName.toLowerCase().includes(q) || s.description.toLowerCase().includes(q));
-          if (c.appName.toLowerCase().includes(q) || c.overview.toLowerCase().includes(q) || c.tag.toLowerCase().includes(q) || schemaMatch) {
-            hits.push({
-              title: `المختبر العملي: ${c.appName}`,
-              snippet: `${c.tag} — ${c.overview.substring(0, 140)}...`,
-              link: `#${c.id}`
-            });
-          }
-        });
-      }
-
-      // Match Code Lab Algorithms
-      if (mod.algorithms) {
-        mod.algorithms.forEach(a => {
-          if (a.name.toLowerCase().includes(q) || a.description.toLowerCase().includes(q) || a.category.toLowerCase().includes(q)) {
-            hits.push({
-              title: `مختبر الأكواد: ${a.name}`,
-              snippet: `${a.category} — ${a.description.substring(0, 140)}...`,
-              link: `#${a.id}`
-            });
-          }
-        });
-      }
-    });
-
-    if (hits.length === 0) {
-      searchPane.innerHTML = `
-        <div style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
-          <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">🔍</div>
-          <div>لم يتم العثور على نتائج مطابقة لـ "<strong>${query}</strong>"</div>
-        </div>
-      `;
-    } else {
-      searchPane.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
-          <h3 style="font-size: 1.1rem; color: var(--color-primary);">
-            نتائج البحث (${hits.length}):
-          </h3>
-          <button class="action-btn-sm" onclick="App.clearSearch()">إغلاق نتائج البحث</button>
-        </div>
-        ${hits.map(hit => `
-          <div class="search-hit-item" onclick="window.location.hash='${hit.link}'; App.clearSearch();">
-            <div class="search-hit-title">${hit.title}</div>
-            <div class="search-hit-snippet">${hit.snippet}</div>
-          </div>
-        `).join('')}
-      `;
-    }
-  },
-
-  clearSearch() {
-    const searchInput = document.getElementById('globalSearchInput');
-    if (searchInput) {
-      searchInput.value = '';
-    }
-    const clearBtn = document.getElementById('searchClearBtn');
-    if (clearBtn) {
-      clearBtn.style.display = 'none';
-    }
-    const searchPane = document.getElementById('searchOverlayPane');
-    const mainContent = document.getElementById('mainContentArea');
-    if (searchPane) searchPane.classList.remove('active');
-    if (mainContent) mainContent.style.display = 'block';
-  }
-};
-
-// Expose App globally
-window.App = App;
-
-// Initialize on DOM Ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => App.init());
-} else {
-  App.init();
-}
