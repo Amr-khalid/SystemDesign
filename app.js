@@ -1663,3 +1663,253 @@ const App = {
 
     container.innerHTML = html;
   },
+
+  renderSectionCard(sec) {
+    let html = `
+      <div class="topic-card" id="${sec.id}">
+        <div class="topic-card-header">
+          <div>
+            <h2 class="topic-title">${sec.title}</h2>
+          </div>
+          <span class="topic-category-tag">${sec.number}</span>
+        </div>
+        <p class="topic-description">${sec.description}</p>
+    `;
+
+    // Inline Diagram for Section
+    if (sec.diagramId && SystemDesignDiagrams[sec.diagramId]) {
+      html += `
+        <div class="diagram-container-card" style="margin: 1rem 0;">
+          <div class="diagram-header">
+            <span class="diagram-caption">${this.t("sectionDiagram")}</span>
+          </div>
+          ${SystemDesignDiagrams.render(sec.diagramId)}
+        </div>
+      `;
+    }
+
+    // Table if present
+    if (sec.table) {
+      html += `
+        <div class="table-responsive">
+          <table class="sd-table">
+            <thead>
+              <tr>
+                ${sec.table.headers.map(h => `<th>${h}</th>`).join('')}
+              </tr>
+            </thead>
+            <tbody>
+              ${sec.table.rows.map(row => `
+                <tr>
+                  ${row.map(cell => `<td>${cell}</td>`).join('')}
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    // Three Levels Progression
+    if (sec.levels) {
+      html += `<div class="levels-container">`;
+      if (sec.levels.l1) {
+        html += `
+          <div class="level-row level-1">
+            <span class="level-badge">${sec.levels.l1.badge}</span>
+            <p class="level-text">${sec.levels.l1.text}</p>
+          </div>
+        `;
+      }
+      if (sec.levels.l2) {
+        html += `
+          <div class="level-row level-2">
+            <span class="level-badge">${sec.levels.l2.badge}</span>
+            <p class="level-text">${sec.levels.l2.text}</p>
+          </div>
+        `;
+      }
+      if (sec.levels.l3) {
+        html += `
+          <div class="level-row level-3">
+            <span class="level-badge">${sec.levels.l3.badge}</span>
+            <p class="level-text">${sec.levels.l3.text}</p>
+          </div>
+        `;
+      }
+      html += `</div>`;
+    }
+
+    html += `</div>`;
+    return html;
+  },
+
+  renderProblemCard(prob) {
+    let html = `
+      <div class="topic-card" id="${prob.id}">
+        <div class="topic-card-header">
+          <div>
+            <h2 class="topic-title">${prob.number} ${prob.title}</h2>
+          </div>
+          <span class="topic-category-tag">${prob.category}</span>
+        </div>
+
+        <!-- Calculations Callout -->
+        <div class="calc-box">
+          <div class="calc-box-title">${this.t("calcTitle")}</div>
+          <div class="calc-box-content">${prob.calculations}</div>
+        </div>
+    `;
+
+    // Diagram if available
+    if (prob.diagramId && SystemDesignDiagrams[prob.diagramId]) {
+      html += `
+        <div class="diagram-container-card" style="margin: 1rem 0;">
+          <div class="diagram-header">
+            <span class="diagram-caption">معمارية النظام: ${prob.title.split('—')[0]}</span>
+          </div>
+          ${SystemDesignDiagrams.render(prob.diagramId)}
+        </div>
+      `;
+    }
+
+    // Three Levels
+    html += `<div class="levels-container">`;
+    if (prob.l1) {
+      html += `
+        <div class="level-row level-1">
+          <span class="level-badge">${this.t("l1Badge")}</span>
+          <p class="level-text">${prob.l1}</p>
+        </div>
+      `;
+    }
+    if (prob.l2) {
+      html += `
+        <div class="level-row level-2">
+          <span class="level-badge">${this.t("l2Badge")}</span>
+          <p class="level-text">${prob.l2}</p>
+        </div>
+      `;
+    }
+    if (prob.l3) {
+      html += `
+        <div class="level-row level-3">
+          <span class="level-badge">${this.t("l3Badge")}</span>
+          <p class="level-text">${prob.l3}</p>
+        </div>
+      `;
+    }
+    html += `</div></div>`;
+    return html;
+  },
+
+  renderCaseStudyCard(cs) {
+    return `
+      <div class="case-card" id="${cs.id}">
+        <div class="case-company-header">
+          <h2 class="topic-title">${cs.title}</h2>
+          <span class="company-pill">${cs.company}</span>
+        </div>
+
+        <div class="case-section-block">
+          <div class="case-subtitle">${this.t("caseBottleneck")}</div>
+          <p class="case-body">${cs.problem}</p>
+        </div>
+
+        <div class="case-section-block">
+          <div class="case-subtitle">${this.t("caseSolution")}</div>
+          <p class="case-body">${cs.solution}</p>
+        </div>
+
+        <div class="case-insight">
+          <strong>${this.t("caseInsight")}</strong> ${cs.productionInsight}
+        </div>
+      </div>
+    `;
+  },
+
+  renderCapstoneBlock(capstone, moduleId) {
+    const solutionId = `sol-${moduleId}`;
+    return `
+      <div class="capstone-container">
+        <div class="capstone-badge">${this.t("capstoneBadge")}</div>
+        <h2 class="capstone-title">${capstone.title}</h2>
+        <div class="capstone-scenario">
+          <strong>${this.t("scenarioLabel")}</strong> ${capstone.scenario}
+        </div>
+
+        <div class="hidden-solution-wrapper">
+          <button class="solution-toggle-btn" onclick="App.toggleSolution('${solutionId}')">
+            <span>${this.t("showCapstoneSolution")}</span>
+            <span class="toggle-arrow" id="arrow-${solutionId}">▼</span>
+          </button>
+          <div class="hidden-solution-content" id="${solutionId}">
+            <p style="color:var(--text-subtle); margin-bottom:1rem; font-weight:600;">${capstone.hiddenSolution.summary}</p>
+            ${capstone.hiddenSolution.steps.map(step => `
+              <div class="solution-step">
+                <div class="solution-step-title">${step.title}</div>
+                <div class="solution-step-body">${step.content}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  // Toggle single solution accordion
+  toggleSolution(id) {
+    const content = document.getElementById(id);
+    const arrow = document.getElementById(`arrow-${id}`);
+    if (!content) return;
+    const isOpen = content.classList.contains('open');
+    if (isOpen) {
+      content.classList.remove('open');
+      if (arrow) arrow.style.transform = 'rotate(0deg)';
+    } else {
+      content.classList.add('open');
+      if (arrow) arrow.style.transform = 'rotate(180deg)';
+    }
+  },
+
+  // Expand or Collapse All Solutions on page
+  toggleAllSolutions(open) {
+    document.querySelectorAll('.hidden-solution-content').forEach(content => {
+      if (open) {
+        content.classList.add('open');
+      } else {
+        content.classList.remove('open');
+      }
+    });
+    document.querySelectorAll('.toggle-arrow').forEach(arrow => {
+      arrow.style.transform = open ? 'rotate(180deg)' : 'rotate(0deg)';
+    });
+  },
+
+  setLevelFilter(level) {
+    this.activeLevelFilter = level;
+    
+    // Update data attribute on wrapper for instantaneous CSS-based filtering
+    const wrapper = document.querySelector('.content-wrapper');
+    if (wrapper) {
+      wrapper.setAttribute('data-level-filter', level);
+    }
+
+    // Update active class on filter buttons
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      const btnLevel = btn.getAttribute('data-level');
+      if (btnLevel === level) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+  },
+
+  toggleMarkRead(modId) {
+    if (this.readModules.has(modId)) {
+      this.readModules.delete(modId);
+    } else {
+      this.readModules.add(modId);
+    }
+    this.saveProgress();
