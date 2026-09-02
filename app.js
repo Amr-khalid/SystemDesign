@@ -1413,3 +1413,253 @@ const App = {
     html = html.replace(/`([^`]+)`/gim, '<code>$1</code>');
 
     // Markdown tables
+    html = html.replace(/((?:\|[^\n]+\|\r?\n)+)/g, (match) => {
+      const lines = match.trim().split('\n').map(l => l.trim()).filter(l => l.length > 0);
+      if (lines.length < 2) return match;
+      const headers = lines[0].split('|').slice(1, -1).map(c => c.trim());
+      const bodyRows = lines.slice(2); // Skip separator row
+
+      let tbl = `<div class="table-responsive"><table class="sd-table" style="margin:0.75rem 0;"><thead><tr>`;
+      headers.forEach(h => { tbl += `<th>${h}</th>`; });
+      tbl += `</tr></thead><tbody>`;
+      bodyRows.forEach(row => {
+        const cells = row.split('|').slice(1, -1).map(c => c.trim());
+        tbl += `<tr>`;
+        cells.forEach(c => { tbl += `<td>${c}</td>`; });
+        tbl += `</tr>`;
+      });
+      tbl += `</tbody></table></div>`;
+      return tbl;
+    });
+
+    // Unordered lists
+    html = html.replace(/^\s*-\s+(.*$)/gim, '<li>$1</li>');
+    html = html.replace(/((?:<li>.*<\/li>\s*)+)/gim, '<ul style="margin:0.5rem 0 0.75rem 1.25rem;">$1</ul>');
+
+    // Paragraphs
+    const paragraphs = html.split(/\n\n+/);
+    html = paragraphs.map(p => {
+      p = p.trim();
+      if (p.startsWith('<h') || p.startsWith('<pre') || p.startsWith('<ul') || p.startsWith('<div')) {
+        return p;
+      }
+      return `<p>${p.replace(/\n/g, '<br>')}</p>`;
+    }).join('\n');
+
+    return html;
+  },
+
+  renderInterviewQuestionsModule(mod, container, isRead, prevMod, nextMod) {
+    const allQuestions = typeof InterviewQuestionsData !== 'undefined' ? InterviewQuestionsData : [];
+    
+    // Filter questions by category and difficulty
+    const diffFilter = this.activeQuizDifficultyFilter;
+    const catFilter = this.activeQuizCategoryFilter || 'all';
+
+    // Categories Breakdown
+    const reactCount = allQuestions.filter(q => q.category === 'React.js').length;
+    const nextCount = allQuestions.filter(q => q.category === 'Next.js').length;
+    const expressCount = allQuestions.filter(q => q.category === 'Node.js & Express').length;
+    const sdCount = allQuestions.filter(q => q.category !== 'React.js' && q.category !== 'Next.js' && q.category !== 'Node.js & Express').length;
+
+    // Apply Filters
+    let filteredQuestions = allQuestions;
+
+    if (catFilter === 'react') {
+      filteredQuestions = filteredQuestions.filter(q => q.category === 'React.js');
+    } else if (catFilter === 'nextjs') {
+      filteredQuestions = filteredQuestions.filter(q => q.category === 'Next.js');
+    } else if (catFilter === 'express') {
+      filteredQuestions = filteredQuestions.filter(q => q.category === 'Node.js & Express');
+    } else if (catFilter === 'system-design') {
+      filteredQuestions = filteredQuestions.filter(q => q.category !== 'React.js' && q.category !== 'Next.js' && q.category !== 'Node.js & Express');
+    }
+
+    if (diffFilter !== 'all') {
+      filteredQuestions = filteredQuestions.filter(q => q.difficulty === diffFilter);
+    }
+
+    // Current category counts for difficulty stats
+    const easyCount = filteredQuestions.filter(q => q.difficulty === 'easy').length;
+    const medCount = filteredQuestions.filter(q => q.difficulty === 'medium').length;
+    const hardCount = filteredQuestions.filter(q => q.difficulty === 'hard').length;
+    const expCount = filteredQuestions.filter(q => q.difficulty === 'expert').length;
+
+    let html = `
+      <div class="content-wrapper">
+        <!-- Module Header -->
+        <div class="module-header">
+          <span class="module-tag">${this.t('interviewTag')}</span>
+          <h1 class="module-title">${this.currentLang === 'en' ? mod.title.split('—')[0].trim() : mod.title}</h1>
+          <p class="module-subtitle">${mod.subtitle}</p>
+        </div>
+
+        <!-- Track / Technology Category Selector Tabs -->
+        <div class="iq-topic-tabs-row" style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1.25rem;">
+          <button class="iq-topic-tab-btn ${catFilter === 'all' ? 'active' : ''}" onclick="App.setQuizCategoryFilter('all')">
+            <span>${this.t('allTracks')}</span>
+            <span class="iq-filter-badge">${allQuestions.length}</span>
+          </button>
+          <button class="iq-topic-tab-btn ${catFilter === 'react' ? 'active' : ''}" onclick="App.setQuizCategoryFilter('react')">
+            <span>${this.t('reactTrack')}</span>
+            <span class="iq-filter-badge">${reactCount}</span>
+          </button>
+          <button class="iq-topic-tab-btn ${catFilter === 'nextjs' ? 'active' : ''}" onclick="App.setQuizCategoryFilter('nextjs')">
+            <span>${this.t('nextTrack')}</span>
+            <span class="iq-filter-badge">${nextCount}</span>
+          </button>
+          <button class="iq-topic-tab-btn ${catFilter === 'express' ? 'active' : ''}" onclick="App.setQuizCategoryFilter('express')">
+            <span>${this.t('expressTrack')}</span>
+            <span class="iq-filter-badge">${expressCount}</span>
+          </button>
+          <button class="iq-topic-tab-btn ${catFilter === 'system-design' ? 'active' : ''}" onclick="App.setQuizCategoryFilter('system-design')">
+            <span>${this.t('sdTrack')}</span>
+            <span class="iq-filter-badge">${sdCount}</span>
+          </button>
+        </div>
+
+        <!-- Quick Summary Stats Grid -->
+        <div class="iq-stats-bar">
+          <div class="iq-stat-card">
+            <span class="iq-stat-num">${filteredQuestions.length}</span>
+            <span class="iq-stat-label">${this.t('questionsDisplayed')}</span>
+          </div>
+          <div class="iq-stat-card">
+            <span class="iq-stat-num" style="color:var(--color-success);">${easyCount}</span>
+            <span class="iq-stat-label">${this.t('easyStat')}</span>
+          </div>
+          <div class="iq-stat-card">
+            <span class="iq-stat-num" style="color:var(--color-warning);">${medCount}</span>
+            <span class="iq-stat-label">${this.t('medStat')}</span>
+          </div>
+          <div class="iq-stat-card">
+            <span class="iq-stat-num" style="color:var(--color-danger);">${hardCount}</span>
+            <span class="iq-stat-label">${this.t('hardStat')}</span>
+          </div>
+          <div class="iq-stat-card">
+            <span class="iq-stat-num" style="color:var(--color-purple);">${expCount}</span>
+            <span class="iq-stat-label">${this.t('expStat')}</span>
+          </div>
+        </div>
+
+        <!-- Filter Tabs & Quick Action Bar -->
+        <div class="view-controls-bar">
+          <div class="iq-filter-tabs-row" style="margin:0; border:none; padding:0; background:transparent;">
+            <button class="iq-filter-btn ${diffFilter === 'all' ? 'active' : ''}" onclick="App.setQuizDifficultyFilter('all')">
+              <span>${this.t('allDifficulties')}</span>
+              <span class="iq-filter-badge">${filteredQuestions.length}</span>
+            </button>
+            <button class="iq-filter-btn ${diffFilter === 'easy' ? 'active' : ''}" onclick="App.setQuizDifficultyFilter('easy')">
+              <span>${this.t('diffEasy')}</span>
+              <span class="iq-filter-badge">${easyCount}</span>
+            </button>
+            <button class="iq-filter-btn ${diffFilter === 'medium' ? 'active' : ''}" onclick="App.setQuizDifficultyFilter('medium')">
+              <span>${this.t('diffMed')}</span>
+              <span class="iq-filter-badge">${medCount}</span>
+            </button>
+            <button class="iq-filter-btn ${diffFilter === 'hard' ? 'active' : ''}" onclick="App.setQuizDifficultyFilter('hard')">
+              <span>${this.t('diffHard')}</span>
+              <span class="iq-filter-badge">${hardCount}</span>
+            </button>
+            <button class="iq-filter-btn ${diffFilter === 'expert' ? 'active' : ''}" onclick="App.setQuizDifficultyFilter('expert')">
+              <span>${this.t('diffExp')}</span>
+              <span class="iq-filter-badge">${expCount}</span>
+            </button>
+          </div>
+
+          <div class="quick-actions">
+            <button class="action-btn-sm" onclick="App.toggleAllQuizAnswers(true)">${this.t('openAllAnswers')}</button>
+            <button class="action-btn-sm" onclick="App.toggleAllQuizAnswers(false)">${this.t('collapseAll')}</button>
+            <button class="action-btn-sm" data-mark-read="${mod.id}" onclick="App.toggleMarkRead('${mod.id}')">
+              ${isRead ? this.t('unmarkModuleRead') : this.t('markModuleRead')}
+            </button>
+          </div>
+        </div>
+
+        <!-- Questions List Cards -->
+        <div class="iq-questions-list">
+          ${filteredQuestions.map((q, idx) => {
+            const isHintOpen = this.openHints.has(q.id);
+            const isAnsOpen = this.openAnswers.has(q.id);
+
+            let diffClass = 'diff-easy';
+            if (q.difficulty === 'medium') diffClass = 'diff-medium';
+            else if (q.difficulty === 'hard') diffClass = 'diff-hard';
+            else if (q.difficulty === 'expert') diffClass = 'diff-expert';
+
+            return `
+              <div class="iq-question-card" id="${q.id}">
+                <div class="iq-card-top-bar">
+                  <div class="iq-badges-group">
+                    <span class="diff-badge ${diffClass}">${q.difficultyLabel}</span>
+                    <span class="iq-cat-pill">${q.categoryAr} (${q.category})</span>
+                  </div>
+                  <span class="iq-num-badge">${this.t('questionNum', idx + 1)}</span>
+                </div>
+
+                <h2 class="iq-card-title-ar">${this.currentLang === 'en' ? q.titleEn : q.title}</h2>
+                <div class="iq-card-title-en">${this.currentLang === 'en' ? q.title : q.titleEn}</div>
+
+                <div class="iq-question-text">${q.question}</div>
+
+                <!-- Collapsible Controls -->
+                <div class="iq-collapsible-group">
+                  <!-- Hints Toggle & Pane -->
+                  ${q.hints && q.hints.length > 0 ? `
+                    <button class="iq-toggle-btn" onclick="App.toggleQuizHint('${q.id}')">
+                      <span>${this.t('interviewHints', q.hints.length)}</span>
+                      <span id="hint-arrow-${q.id}">${isHintOpen ? '▲' : '▼'}</span>
+                    </button>
+                    <div class="iq-collapsible-pane ${isHintOpen ? 'show' : ''}" id="hint-pane-${q.id}">
+                      <ul class="iq-hints-list">
+                        ${q.hints.map(h => `
+                          <li class="iq-hint-item">
+                            <span class="iq-hint-bullet">▸</span>
+                            <span>${h}</span>
+                          </li>
+                        `).join('')}
+                      </ul>
+                    </div>
+                  ` : ''}
+
+                  <!-- Model Answer Toggle & Pane -->
+                  <button class="iq-toggle-btn btn-answer" onclick="App.toggleQuizAnswer('${q.id}')">
+                    <span>${this.t('modelAnswerTitle')}</span>
+                    <span id="ans-arrow-${q.id}">${isAnsOpen ? '▲' : '▼'}</span>
+                  </button>
+                  <div class="iq-collapsible-pane ${isAnsOpen ? 'show' : ''}" id="ans-pane-${q.id}">
+                    <div class="iq-answer-body">
+                      ${this.parseMarkdownSimple(q.answer)}
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Keywords / Tags Footer -->
+                ${q.keywords && q.keywords.length > 0 ? `
+                  <div class="iq-keywords-row">
+                    <span style="font-size:0.75rem; color:var(--text-subtle); font-weight:700;">${this.t("keywordsLabel")}</span>
+                    ${q.keywords.map(kw => `<span class="iq-kw-tag">${kw}</span>`).join('')}
+                  </div>
+                ` : ''}
+              </div>
+            `;
+          }).join('')}
+        </div>
+
+        <!-- Footer Navigation -->
+        <div class="module-footer-nav" style="margin-top:2.5rem;">
+          <a href="#module-9" class="nav-page-btn">
+            <span class="nav-page-label">${this.t('prevModule')}</span>
+            <span class="nav-page-title">9. ${this.currentLang === 'en' ? 'Interactive Code Lab' : 'مختبر الأكواد والتطبيق البرمجي'}</span>
+          </a>
+          
+          <a href="#module-1" class="nav-page-btn">
+            <span class="nav-page-label">${this.t('backToStart')}</span>
+            <span class="nav-page-title">1. ${this.currentLang === 'en' ? 'In a Hurry & Framework' : 'المسار السريع ومنهجية المقابلة'}</span>
+          </a>
+        </div>
+      </div>
+    `;
+
+    container.innerHTML = html;
+  },
