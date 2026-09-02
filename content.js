@@ -2574,6 +2574,13 @@ db.shards.forEach(s => {
 });`
         }
       ]
+    },
+    {
+      id: "module-10",
+      number: "10",
+      title: "Interview Questions — بنك أسئلة المقابلات الشامل",
+      subtitle: "دليل أسئلة مقابلات هندسة وتصميم النظم مصنفة حسب التدرج في الصعوبة مع تلميحات ذكية وإجابات نموذجية تفصيلية",
+      isInterviewQuestions: true
     }
   ]
 };
