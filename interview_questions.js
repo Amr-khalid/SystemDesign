@@ -487,4 +487,214 @@ const InterviewQuestionsData = [
   عند البحث عن "System Design"، يبحث المحرك في الفهرس المعكوس عن قائمة معرفات المستندات التي تحتوي كلمة "system" وقائمة كلمة "design"، ثم يقوم بعملية تقاطع منطقي (Posting Lists Intersection) بسرعة خارقة مع حساب درجة الملاءمة (Relevance Score عبر BM25).`,
     keywords: ["elasticsearch", "inverted index", "full text search", "lucene", "tokenization", "bm25"]
   },
+
+  // ==========================================
+  // LEVEL 3: HARD (المستوى المتقدم / تصميم أنظمة إنتاجية متكاملة)
+  // ==========================================
+  {
+    id: "iq-hard-1",
+    difficulty: "hard",
+    difficultyLabel: "متقدم (System Scale)",
+    category: "Full System Design",
+    categoryAr: "تصميم أنظمة متكاملة",
+    title: "تصميم خدمة اختصار الروابط على نطاق عالمي (Design TinyURL / Bitly)",
+    titleEn: "Design a Scalable URL Shortener (TinyURL)",
+    question: "صمم خدمة تقليص روابط تستقبل 100 مليون رابط جديد شهرياً وتخدم 10 مليارات نقرة شهرياً بزمن استجابة أقل من 10ms ونسبة توافر 99.99%.",
+    hints: [
+      "كم عدد الأحرف المطلوبة في الرابط المختصر إذا استخدمنا Base62؟",
+      "كيف تتفادى تكرار المعرفات وتضمن عدم توليد نفس الرابط لمستخدمين مختلفين؟",
+      "هل نستخدم كود إعادة التوجيه 301 أم 302 ولماذا؟"
+    ],
+    answer: `### 1. الحسابات التقديرية (Back-of-the-envelope):
+- **معدل الكتابة**: 100 مليون رابط شهرياً ≈ 40 عملية كتابة/ثانية.
+- **معدل القراءة**: 10 مليارات نقرة شهرياً ≈ 4,000 عملية قراءة/ثانية (نسبة القراءة إلى الكتابة 100:1).
+- **التخزين لعشر سنوات**: 100 مليون × 12 × 10 ≈ 12 مليار رابط. بافتراض 500 بايت لكل سجل ≈ 6 تيرابايت.
+
+### 2. طول الرابط وخوارزمية الترميز (Base62 Encoding):
+- نستخدم الحروف الأبجدية الصغيرة والكبيرة والأرقام [a-z, A-Z, 0-9] (مجموعها 62 حرفاً).
+- باستخدام 7 خانات: 62^7 ≈ 3.5 تريليون رابط فريد (وهو كافٍ جداً لأجيال).
+- **آلية التوليد**: نستخدم مولد معرفات موزع (مثل Snowflake) لتوليد رقم فريد 64-bit، ثم نحول الرقم العشري إلى Base62.
+
+### 3. المعمارية ومسار الطلب:
+- **مسار الكتابة (Shorten URL)**:
+  - العميل -> API Gateway -> Shortening Service.
+  - تقوم الخدمة بطلب معرّف فريد من ID Generator، ثم تحويله لـ Base62.
+  - كتابة الرابط الطويل والمختصر في قاعدة بيانات NoSQL سريعة (مثل DynamoDB أو Cassandra) لسرعة القراءة بمفتاح البحث short_hash.
+- **مسار القراءة (Redirection)**:
+  - العميل ينقر الرابط المختصر -> CDN / Cloudflare Cache -> Redis Cache -> DB.
+  - إرجاع كود **HTTP 302 (Found / Temporary Redirect)** إذا كنا نرغب في تتبع إحصائيات كل نقرة، أو **HTTP 301 (Moved Permanently)** لتقليل الحمل على الخوادم وترك المتصفح يقوم بإعادة التوجيه مباشرة.
+
+### 4. التوسع والتخزين المؤقت:
+- قاعدة 80/20: 20% من الروابط تجلب 80% من الزيارات. تخزين هذه الروابط في مجمع Redis بحجم 100GB كافٍ تماماً لخدمة 99% من القراءات بزمن Sub-millisecond.`,
+    keywords: ["tinyurl", "url shortener", "base62", "http 301 vs 302", "bloom filter", "dynamodb"]
+  },
+  {
+    id: "iq-hard-2",
+    difficulty: "hard",
+    difficultyLabel: "متقدم (System Scale)",
+    category: "Real-Time & Messaging",
+    categoryAr: "الأنظمة اللحظية",
+    title: "تصميم منصة محادثات فورية على نطاق واتساب أو سلاك (Design a Chat System)",
+    titleEn: "Design Real-Time Scalable Chat Application (WhatsApp/Slack)",
+    question: "صمم نظام دردشة يدعم المحادثات الفردية (1-on-1) والمجموعات (Group Chats) لـ 50 مليون مستخدم نشط يومياً مع ضمان الترتيب، وتأكيد الاستلام (Read Receipts)، وحالة الاتصال (Online Presence).",
+    hints: [
+      "لماذا نفضل WebSockets على HTTP Polling في اتصالات الشات؟",
+      "كيف يتم تخزين الرسائل الضخمة: هل نستخدم RDBMS أم Wide-Column NoSQL؟",
+      "كيف توجه رسالة من مستخدم متصل بالخادم A إلى مستخدم متصل بالخادم B؟"
+    ],
+    answer: `### 1. بروتوكول الاتصال وإدارة الجلسات:
+- استخدام بروتوكول **WebSockets**؛ لإنشاء اتصال ثنائي الاتجاه دائم (Full-duplex, Persistent Connection) وخفيف الوزن بين هاتف المستخدم وخوادم الدردشة (Chat Servers).
+- كل مستخدم متصل يحتفظ باتصاله على خادم محدد. نحتفظ بمصفوفة التواجد والجلسات في **Redis Session Registry**: user_101 -> chat_server_node_4.
+
+### 2. مسار إرسال الرسالة الفردية (1-on-1 Message Flow):
+1. يرسل المستخدم أ رسالة للمستخدم ب عبر اتصال الـ WebSocket المفتوح مع chat_server_1.
+2. يقوم chat_server_1 بحفظ الرسالة فوراً في قاعدة البيانات وتوليد message_id مرتب زمنياً.
+3. يستعلم الخادم من Redis عن الخادم المتصل به المستخدم ب؛ يتبين أنه chat_server_5.
+4. إذا كان المستخدم ب متصلاً: ترسل الرسالة عبر Message Broker (مثل Kafka أو Redis Pub/Sub) إلى chat_server_5 الذي يدفعها بدوره عبر الـ WebSocket للمستخدم ب.
+5. إذا كان غير متصل: يتم إرسال إشعار فوري (Push Notification عبر APNs/FCM) وتخزين الرسالة كـ Unread.
+
+### 3. تخزين الرسائل (Message Storage Engine):
+- معدل كتابة هائل لا يناسبه SQL التقليدي.
+- نستخدم قاعدة بيانات **Wide-Column NoSQL** (مثل Apache Cassandra أو ScyllaDB):
+  - المفتاح الأساسي: PRIMARY KEY ((chat_id), message_id).
+  - التقسيم بناءً على chat_id يضمن وضع كافة رسائل المحادثة الواحدة في نفس العقدة.
+  - ترتيب التكتل (CLUSTERING ORDER BY (message_id ASC)) يضمن قراءة آخر 50 رسالة بعملية مسح تسلسلي فائقة السرعة على القرص.
+
+### 4. معمارية حالة الاتصال (Online Presence):
+- العميل يرسل نبضة حياة دورية (Heartbeat) كل 5 ثوانٍ عبر الـ WebSocket.
+- تخزن الحالة في Redis مع TTL = 15 ثانية. إذا انقطع الاتصال ولم تصل نبضة الحياة، تنتهي صلاحية المفتاح ويتحول المستخدم إلى Offline تلقائياً.`,
+    keywords: ["chat system", "websockets", "cassandra", "redis pub-sub", "presence system", "push notifications"]
+  },
+  {
+    id: "iq-hard-3",
+    difficulty: "hard",
+    difficultyLabel: "متقدم (System Scale)",
+    category: "Social Media Feed",
+    categoryAr: "شبكات التواصل الاجتماعي",
+    title: "تصميم الخط الزمني والتغذية الإخبارية (Design News Feed: Twitter / Instagram)",
+    titleEn: "Design Social Media News Feed Architecture (Fan-out on Read vs Write)",
+    question: "عند تصميم التغذية الإخبارية (News Feed)، كيف تفاضل بين استراتيجية الدفع عند النشر (Fan-out-on-Write / Push) والسحب عند التصفح (Fan-out-on-Read / Pull)؟ وكيف تحل مشكلة المشاهير (Celebrity Problem)؟",
+    hints: [
+      "تخيل مستخدماً لديه 100 متابع فقط، مقابل شخصية مشهورة يتابعها 80 مليون شخص.",
+      "ماذا يحدث للخوادم إذا نشر شخص لديه 80 مليون متابع تغريدة بنمط الـ Push؟"
+    ],
+    answer: `### 1. استراتيجية الدفع عند النشر (Fan-out-on-Write / Push Model):
+- **الآلية**: عندما ينشر مستخدم منشوراً جديداً، تبحث الخدمة عن جميع متابعيه، وتقوم بحقن معرف المنشور في القوائم البريدية المجهزة مسبقاً للـ Feed الخاصة بكل متابع في ذاكرة الكاش (Redis ZSet).
+- **المميزات**: قراءة الخط الزمني فائقة السرعة وعملية O(1)؛ لأن الـ Feed جاهز ومصنوع سلفاً في الذاكرة.
+- **العيوب (مشكلة المشاهير Celebrity Problem)**: إذا كان لدى المستخدم 50 مليون متابع، فإن منشوراً واحداً سيتطلب كتابة 50 مليون عملية في مجمع Redis، مما يستهلك الموارد ويؤدي لتأخير وصول التحديثات (Write Amplification).
+
+### 2. استراتيجية السحب عند القراءة (Fan-out-on-Read / Pull Model):
+- **الآلية**: لا يتم فعل شيء عند النشر. عندما يفتح المستخدم حسابه لتصفح الـ Feed، يقوم النظام بجلب أحدث منشورات جميع الأشخاص الذين يتابعهم، ودمجها وفرزها زمنياً أثناء طلب الصفحة.
+- **المميزات**: لا يوجد إهدار لموارد الخوادم في الكتابة للمستخدمين الخاملين.
+- **العيوب**: بطء شديد في القراءة واستهلاك هائل للمعالج في عمل Aggregation & Sorting في كل مرة يفتح فيها المستخدم التطبيق.
+
+### 3. الحل المعماري الهجين المعتمد (Hybrid Approach):
+- **للمستخدمين العاديين (< 20,000 متابع)**: نستخدم نموذج **Fan-out-on-Write**؛ لأن عدد متابعيهم محدود والاستفادة من سرعة القراءة هائلة.
+- **للمشاهير والحسابات المليونية**: نوقف الدفع المسبق لمنشوراتهم! وبدلاً من ذلك، عندما يفتح المتابع تطبيقه، نقوم بسحب منشورات المشاهير الذين يتابعهم لحظياً ودمجها مع قائمته المحفوظة مسبقاً في الذاكرة.`,
+    keywords: ["news feed", "fanout on write", "fanout on read", "celebrity problem", "hybrid model", "redis zset"]
+  },
+  {
+    id: "iq-hard-4",
+    difficulty: "hard",
+    difficultyLabel: "متقدم (System Scale)",
+    category: "Streaming & Media",
+    categoryAr: "بث ومعالجة الفيديو",
+    title: "تصميم منصة بث ومشاركة الفيديو مثل YouTube أو Netflix",
+    titleEn: "Design Video Streaming Platform (YouTube/Netflix Architecture)",
+    question: "صمم نظاماً يتيح للمستخدمين رفع مقاطع فيديو ومعالجتها بدقات متعددة وبثها بسلاسة لملايين المشاهدين حول العالم باختلاف سرعات الإنترنت لديهم.",
+    hints: [
+      "كيف يعمل بروتوكول البث التكيفي (Adaptive Bitrate Streaming كـ HLS و DASH)؟",
+      "كيف يتم تقسيم الفيديو الكبير ومعالجته في مهام متوازية في الخلفية (Video Transcoding Pipeline)؟"
+    ],
+    answer: `### 1. خط معالجة وتحويل الفيديو (Video Ingestion & Transcoding Pipeline):
+1. **الرفع الأولي (Chunked Direct Upload)**:
+   - يطلب العميل رابط رفع مؤقت وموقع (Pre-signed S3 URL).
+   - يُرفع الفيديو في أجزاء صغيرة (Multipart Upload) مباشرة إلى مخزن الكائنات (Amazon S3 / Google Cloud Storage) لتجاوز خوادم التطبيقات وتقليل العبء عليها.
+2. **المعالجة غير المتزامنة (Async Transcoding)**:
+   - بمجرد اكتمال الرفع، يُطلق S3 حدثاً إلى طابور رسائل (Kafka / AWS SQS).
+   - تقوم مجمعات من خوادم المعالجة المتوازية بتقطيع الفيديو إلى قطع زمنية متساوية (Chunks بطول 4-10 ثوانٍ) ومعالجتها بالتوازي لتوليد دقات مختلفة (1080p, 720p, 480p, 360p) بترميزات حديثة (H.264, AV1).
+3. **توليد ملفات البث التكيفي (Manifest Files)**:
+   - توليد ملف فهرس رئيسي (playlist.m3u8 لبروتوكول HLS أو .mpd لـ DASH) يسرد روابط كل الدقات وأجزائها الزمنية.
+
+### 2. معمارية البث والمشاهدة (Video Streaming Architecture):
+- **بروتوكول البث التكيفي (Adaptive Bitrate Streaming - ABR)**:
+  - يقوم مشغل الفيديو لدى العميل بقياس سرعة الاتصال وجودة الشبكة باستمرار. إذا ضعفت السرعة، يطلب القطعة التالية تلقائياً بدقة أقل (480p) لمنع توقف الفيديو (Buffering)، وعند تحسن السرعة يرتقي إلى (1080p).
+- **شبكات توصيل المحتوى الجغرافية (Edge CDNs)**:
+  - يتم تخزين قطع الفيديو والأغلفة في حواف شبكات الـ CDN المنتشرة بالقرب من مزودي خدمة الإنترنت المحليين (ISPs).
+  - الفيديوهات الشائجة (Popular/Trending) تُخدم بنسبة 98%+ من كاش الـ CDN دون الوصول لمراكز البيانات الأصلية.`,
+    keywords: ["youtube", "netflix", "video streaming", "hls", "dash", "transcoding", "s3", "cdn", "abr"]
+  },
+  {
+    id: "iq-hard-5",
+    difficulty: "hard",
+    difficultyLabel: "متقدم (System Scale)",
+    category: "Geo-Distributed Systems",
+    categoryAr: "الأنظمة الجغرافية والمكانية",
+    title: "تصميم نظام تتبع سيارات الأجرة مثل Uber أو Careem (Proximity Service)",
+    titleEn: "Design Location-Based Ride Sharing System (Uber/Careem Proximity)",
+    question: "صمم نظاماً يستقبل إحداثيات GPS من ملايين السائقين كل 4 ثوانٍ، ويسمح للركاب بالبحث عن أقرب 10 سائقين متاحين في محيط 3 كم بزمن استجابة أقل من 50ms.",
+    hints: [
+      "لماذا تفشل استعلامات المسافة الكلاسيكية على قواعد البيانات العلائقية مثل صيغة Haversine؟",
+      "قارن بين أنظمة الفهرسة الجغرافية: Geohash و Uber H3 و Google S2."
+    ],
+    answer: `### 1. معضلة البحث المكاني وحلها:
+البحث الكلاسيكي عبر حساب المسافة الرياضية بين خطوط الطول والعرض (SQRT(dx^2 + dy^2)) عبر ملايين السيارات يتطلب فحص كل السجلات ومسح الجدول بالكامل مما يستغرق ثوانٍ عديدة. الحل هو **الفهرسة المكانية (Spatial Indexing)**.
+
+### 2. الفهرسة عبر شبكة السداسيات (Uber H3 Spatial Grid) أو Geohash:
+- يتم تقسيم سطح الكرة الأرضية إلى خلايا سداسية أو مربعات متداخلة هرمياً، ويُعطى لكل خلية معرّف فريد (Cell ID).
+- تتحول مشكلة البحث الجغرافي المعقدة إلى مجرد استعلام بسيط عن مفتاح في الذاكرة: "أعطني كل السائقين الموجودين في الخلية الحالية Cell_current والخلايا السداسية الـ 6 المجاورة لها مباشرة".
+
+### 3. تدفق البيانات عالي الكثافة (Location Ingestion Flow):
+- **تحديث المواقع (Write Path)**:
+  - 2 مليون سائق يرسلون إحداثياتهم كل 4 ثوانٍ = **500,000 تحديث موقع في الثانية**.
+  - لا نكتب هذه التحديثات اللحظية في قرص قاعدة البيانات! بل في مجمع **Redis Cluster In-Memory** باستخدام بنيات Geospatial أو Hashes:
+    - GEOADD drivers:city_id longitude latitude driver_id
+- **بحث الراكب عن السائقين (Read Path)**:
+  - يستعلم الراكب بإحداثياته:
+    - GEORADIUS drivers:city_id current_lon current_lat 3 km WITHDIST ASC COUNT 10
+  - يتم جلب السائقين الأقرب في أقل من 5 ملي ثوانٍ من الذاكرة مباشرة.
+
+### 4. حفظ الرحلات والتاريخ:
+يتم إرسال الإحداثيات بالتوازي عبر Kafka إلى مخزن بيانات زمني (مثل Apache Cassandra) لمعالجة حساب تكلفة الأجرة التاريخية والتحليلات لاحقاً.`,
+    keywords: ["uber", "geohash", "h3", "spatial indexing", "redis geo", "proximity service", "high throughput writes"]
+  },
+  {
+    id: "iq-hard-6",
+    difficulty: "hard",
+    difficultyLabel: "متقدم (System Scale)",
+    category: "E-Commerce",
+    categoryAr: "التجارة الإلكترونية ومبيعات الفلاش",
+    title: "تصميم نظام حجز ومبيعات سريعة (Flash Sale / Ticket Booking: Ticketmaster)",
+    titleEn: "Design High-Concurrency Flash Sale / Ticketmaster Booking System",
+    question: "عند طرح 5,000 تذكرة لحفلة موسيقية مشهورة ويتنافس عليها 500,000 مشتري في نفس الدقيقة، كيف تمنع البيع الزائد (Overselling) ومشاكل الـ Race Conditions مع ضمان عدالة الحجز؟",
+    hints: [
+      "ما عيوب استخدام أقفال قواعد البيانات التقليدية (Pessimistic Locking / SELECT FOR UPDATE) تحت هذا الضغط؟",
+      "كيف تستخدم ميزة التنفيذ الذري في Redis (Atomic Operations عبر Lua Scripts)؟",
+      "ما هو دور طوابير الانتظار الافتراضية (Virtual Waiting Room)؟"
+    ],
+    answer: `### 1. طبقة غرفة الانتظار الافتراضية (Virtual Waiting Room):
+- منع وصول نصف مليون مستخدم في نفس اللحظة لخوادم الدفع وقواعد البيانات.
+- يُوضع المستخدمون عند دخول الموقع في طابور عادل (FIFO Queue مبني على Redis وموجه عبر CDN).
+- يُمنح كل مستخدم رمز مرور مؤقت (Token) يسمح بدخول دفعات منتظمة فقط (مثلاً 1,000 مستخدم كل دقيقة) لصفحة الشراء.
+
+### 2. منع البيع الزائد عبر التنفيذ الذري في Redis (Atomic Lua Script):
+- يتم تخزين عدد المقاعد المتبقية في Redis كعداد ذري.
+- عند محاولة الحجز، يُنفذ **Lua Script** ذري في Redis للتحقق والحجز في خطوة واحدة لا يمكن مقاطعتها:
+\`\`\`lua
+local available = tonumber(redis.call('get', KEYS[1]))
+if available > 0 then
+    redis.call('decr', KEYS[1])
+    redis.call('setex', KEYS[2], 600, ARGV[1]) -- حجز مؤقت لمدة 10 دقائق
+    return 1 -- تم الحجز المبدئي بنجاح
+else
+    return 0 -- نفدت التذاكر
+end
+\`\`\`
+
+### 3. المعالجة وحل المعاملات (Payment Saga & Expiration):
+- **حجز مؤقت بمهلة (Hold with TTL)**: يُمنح المشتري 10 دقائق لإتمام عملية الدفع المصرفي.
+- إذا تمت عملية الدفع بنجاح: يتم تثبيت الحجز نهائياً في قاعدة البيانات الرئيسية (PostgreSQL مع نمط Outbox) وإرسال التذاكر عبر Kafka.
+- إذا فشل الدفع أو انقضت مهلة الـ 10 دقائق: يقوم نظام انتهاء الصلاحية التلقائي (Redis Key Expiration / TTL Worker) بإلغاء الحجز وإعادة زيادة العداد الذري ليصبح المقعد متاحاً للمنتظرين في الطابور فوراً.`,
+    keywords: ["flash sale", "ticketmaster", "overselling", "race condition", "redis lua", "pessimistic locking", "waiting room"]
+  },
 ];
