@@ -697,4 +697,551 @@ end
 - إذا فشل الدفع أو انقضت مهلة الـ 10 دقائق: يقوم نظام انتهاء الصلاحية التلقائي (Redis Key Expiration / TTL Worker) بإلغاء الحجز وإعادة زيادة العداد الذري ليصبح المقعد متاحاً للمنتظرين في الطابور فوراً.`,
     keywords: ["flash sale", "ticketmaster", "overselling", "race condition", "redis lua", "pessimistic locking", "waiting room"]
   },
+
+  // ==========================================
+  // LEVEL 4: EXPERT (المستوى الخبير / Staff+ & Distributed Systems Core)
+  // ==========================================
+  {
+    id: "iq-exp-1",
+    difficulty: "expert",
+    difficultyLabel: "خبير (Staff+ Core)",
+    category: "Distributed Transactions",
+    categoryAr: "المعاملات الموزعة",
+    title: "المعاملات الموزعة: متى تتجنب Two-Phase Commit (2PC) وكيف تنفذ Saga Pattern؟",
+    titleEn: "Distributed Transactions: 2PC vs Saga Pattern (Orchestration & Choreography)",
+    question: "في معمارية الخدمات المصغرة حيث تمتلك كل خدمة قاعدة بياناتها المستقلة (Database-per-Service)، كيف تضمن اتساق البيانات عند إجراء عملية دفع وشحن وحجز مخزون؟ ولماذا يعتبر بروتوكول 2PC غير عملي في السحاب؟",
+    hints: [
+      "بروتوكول 2PC يحبس الموارد (Blocking Protocol) حتى تجيب كل العقد.",
+      "ما هي المعاملة التعويضية (Compensating Transaction) في نمط Saga؟",
+      "قارن بين إدارة الساجا المركزية (Orchestration عبر Temporal) واللامركزية (Choreography عبر Events)."
+    ],
+    answer: `### 1. لماذا يعتبر بروتوكول 2PC (Two-Phase Commit) خياراً سيئاً للخدمات المصغرة السحابية؟
+- **بروتوكول حابس متزامن (Blocking Protocol)**: في مرحلة الإعداد (Prepare Phase)، تقوم كافة قواعد البيانات بحجز الأقفال وتجميد الصفوف، وتنتظر أمر الالتزام (Commit) من المنسق المركزي.
+- **تدهور شديد في الأداء والتوافر**: إذا تباطأت خدمة واحدة أو انقطعت الشبكة، تظل كافة الخدمات الأخرى مقفلة مما يرفع زمن الاستجابة ويقلل التوافرية لأدنى مستوياتها (نظام CP صارم غير قابل للتوسع).
+
+### 2. نمط الساجا (Saga Pattern - Eventual Consistency):
+بدلاً من محاولة جعل كل شيء يتم في ثانية واحدة بشكل متزامن، تقسم المعاملة الكبرى إلى سلسلة من المعاملات المحلية المستقلة المنفصلة:
+1. خدمة الطلبات: تنشئ الطلب بحالة PENDING.
+2. خدمة الدفع: تخصم المبلغ بنجاح.
+3. خدمة المخزون: تكتشف أن المنتج غير متوفر بالمستودع!
+- **المعاملات التعويضية (Compensating Transactions)**: للتراجع عن الخطوات السابقة، تُطلق الساجا عمليات تعويضية بالترتيب العكسي: يتم رد المبلغ للمحفظة، وتغيير حالة الطلب إلى CANCELLED.
+
+### 3. نماذج تطبيق الساجا:
+- **التنسيق اللامركزي (Choreography)**:
+  - الخدمات تتخاطب ذاتياً عبر أحداث Kafka دون منسق مركزي.
+  - مناسب للتدفقات البسيطة (2-3 خدمات)، لكنه يصبح كابوساً تشغيلياً يصعب تتبعه واكتشاف أخطائه مع زيادة الخدمات.
+- **التنسيق المركزي (Orchestration - الموصى به لمهندسي Staff+)**:
+  - وجود خدمة منسقة مخصصة (Saga Orchestrator باستخدام أطر مثل Temporal.io أو AWS Step Functions).
+  - المنسق يمتلك آلة حالة صريحة (State Machine)، ويعرف الخطوة الحالية بدقة، ويدير محاولات الإعادة (Retries) وتوقيت المعاملات التعويضية، مما يوفر شفافية كاملة وموثوقية فائقة.`,
+    keywords: ["saga pattern", "two-phase commit", "2pc", "distributed transactions", "compensating transaction", "temporal"]
+  },
+  {
+    id: "iq-exp-2",
+    difficulty: "expert",
+    difficultyLabel: "خبير (Staff+ Core)",
+    category: "Consensus Algorithms",
+    categoryAr: "التوافق والإجماع الموزع",
+    title: "خوارزميات التوافق الموزع: كيف تحقق خوارزمية Raft الإجماع في أنظمة مثل etcd و Kafka؟",
+    titleEn: "Distributed Consensus: Raft Protocol Deep Dive (Leader Election & Log Replication)",
+    question: "كيف تضمن مجموعة من الخوادم الاتفاق على نفس الحالة ونفس ترتيب السجلات عند تعطل بعض العقد؟ اشرح دور حالات العقد في Raft (Leader, Follower, Candidate) وكيف تحل مشكلة Split-Brain.",
+    hints: [
+      "ما هو مفهوم الأغلبية المطلقة (Quorum) ولماذا يُشترط وجود عدد فردي من العقد (3 أو 5 عقد)؟",
+      "كيف يمنع مصطلح الفترة الانتخابية (Term) وHeartbeats حدوث قائدين للنظام في نفس الوقت؟"
+    ],
+    answer: `### 1. الحالات الثلاث للعقدة في بروتوكول Raft:
+1. **التابع (Follower)**: الحالة الافتراضية؛ يستقبل الأوامر ونبضات الحياة من القائد فقط.
+2. **المرشح (Candidate)**: عندما لا يستقبل التابع نبضات حياة بعد انتهاء مهلة عشوائية (Election Timeout)، يتحول لمرشح، ويزيد رقم الدورة (Term)، ويطلب تصويت باقي العقد ليصبح قائداً.
+3. **القائد (Leader)**: العقدة التي تحصل على أصوات أغلبية العقد (N/2 + 1). يستقبل كافة طلبات العملاء ويقوم بنسخ السجلات للجميع.
+
+### 2. نسخ السجلات (Log Replication) والأغلبية المطلقة (Quorum):
+- عندما يرسل العميل أمراً، يكتبه القائد في سجله المحلي كـ Uncommitted.
+- يرسل القائد الأمر لجميع التابعين عبر رسائل AppendEntries.
+- بمجرد أن تؤكد **أغلبية العقد (Quorum)** كتابة الأمر، يقوم القائد بتثبيت المعاملة نهائياً (Commit) وإرجاع رسالة النجاح للعميل، ثم يبلغ التابعين في النبضة التالية بتثبيتها.
+
+### 3. حل كارثة انقسام الدماغ (Split-Brain Mitigation):
+- إذا انقسمت شبكة مكونة من 5 خوادم إلى جزأين بفعل عطل شبكي: جزء به خادمان وجزء به 3 خوادم.
+- الجزء الذي يحتوي على خادمين لا يمكنه تحقيق نصاب الأغلبية المطلقة (5/2 + 1 = 3)، وبالتالي سيرفض كافة عمليات الكتابة.
+- الجزء الذي يحتوي على 3 خوادم يمتلك الأغلبية، فينتخب قائداً جديداً ويستمر في قبول الكتابة.
+- عند عودة اتصال الشبكة، يكتشف قائد الجزء المعزول وجود قائد آخر برقم دورة انتخابية أعلى (Term) فيتنحى فوراً ويتحول لتابع ويقوم بمزامنة سجله من القائد الأحدث، مما يمنع تعارض البيانات كلياً.`,
+    keywords: ["raft", "consensus", "etcd", "split-brain", "paxos", "quorum", "log replication"]
+  },
+  {
+    id: "iq-exp-3",
+    difficulty: "expert",
+    difficultyLabel: "خبير (Staff+ Core)",
+    category: "Reliability & Resilience",
+    categoryAr: "المتانة ومقاومة الأعطال",
+    title: "استراتيجيات الصمود المتقدمة: قاطع الدائرة (Circuit Breaker) وتقليص الحمل (Load Shedding)",
+    titleEn: "Advanced Resilience Patterns: Circuit Breakers, Bulkheads & Load Shedding",
+    question: "عندما تتعطل خدمة خلفية في بيئة خدمات مصغرة ذات استدعاءات متسلسلة، كيف تحمي النظام من الانهيار التسلسلي المتتابع (Cascading Failures)؟",
+    hints: [
+      "فكر في استنزاف خيوط المعالجة (Thread Pool Exhaustion) عند انتظار استجابة خدمة بطيئة.",
+      "ما هي الحالات الثلاث لنمط Circuit Breaker (Closed, Open, Half-Open)؟",
+      "كيف تفرّق بين حركة المرور الحرجة وغير الحرجة عند عمل Load Shedding؟"
+    ],
+    answer: `### 1. قاطع الدائرة الكهربائية (Circuit Breaker Pattern):
+- **المشكلة**: إذا تباطأت خدمة الدفع وأصبحت تستغرق 30 ثانية لكل استجابة، ستقوم خدمة الطلبات بحجز خيوط معالجة (Threads) معلقة بانتظارها حتى تنفد كافة موارد الخادم وتنهار خدمة الطلبات أيضاً (Cascading Failure).
+- **آلية العمل**:
+  - **حالة الإغلاق (Closed)**: التدفق طبيعي والطلبات تمر. إذا تجاوزت نسبة الأخطاء حداً معيناً (مثلاً 50% من الطلبات تفشل في آخر 10 ثوانٍ)، يتحول القاطع إلى مفتوح.
+  - **حالة الفتح (Open)**: تُقطع الاتصالات فوراً وبشكل حاسم دون لمس الخدمة المعطلة، ويرجع خطأ فوري أو استجابة بديلة (Fallback) للعميل لمنح الخدمة المتعثرة فرصة للتعافي.
+  - **نصف المفتوح (Half-Open)**: بعد انقضاء مهلة محددة، يمرر القاطع عدداً ضئيلاً جداً من الطلبات التجريبية (Canary Requests)؛ فإذا نجحت يعود القاطع للعمل طبيعياً (Closed)، وإلا يعود مفتوحاً مجدداً.
+
+### 2. نمط الحواجز المقاومة للغرق (Bulkhead Pattern):
+- مستوحى من حواجز السفن التي تعزل تسرب المياه في قسم واحد دون غرق السفينة بأكملها.
+- عزل وتخصيص مجمعات خيوط معالجة وذاكرة منفصلة (Isolated Thread Pools) لكل خدمة خارجية أو مستأجر (Tenant)، بحيث لا يؤدي تعطل مسار استدعاءات معينة إلى استنزاف موارد النظام العام.
+
+### 3. إسقاط الأحمال المتدرج (Load Shedding & Graceful Degradation):
+- عندما يقترب المعالج من 95% والذاكرة من النفاد، يقوم النظام بإسقاط وتجاهل الطلبات غير الحرجة عمداً (مثل إحصائيات التصفح، توصيات المنتجات، إشعارات الخلفية) مع الاستمرار في خدمة مسارات الشراء والدفع الحرجة فقط، بدلاً من انهيار الخادم بالكامل وخروجه من الخدمة.`,
+    keywords: ["circuit breaker", "cascading failure", "load shedding", "bulkhead", "resilience", "graceful degradation"]
+  },
+  {
+    id: "iq-exp-4",
+    difficulty: "expert",
+    difficultyLabel: "خبير (Staff+ Core)",
+    category: "Change Data Capture",
+    categoryAr: "التقاط تغييرات البيانات",
+    title: "نمط Transactional Outbox والتقاط تغييرات البيانات عبر CDC و Debezium",
+    titleEn: "Transactional Outbox Pattern & Change Data Capture (CDC)",
+    question: "عندما تحتاج إلى حفظ طلب في قاعدة البيانات وإرسال حدث إلى Kafka في نفس اللحظة (Dual-Write Problem)، كيف تضمن عدم وقوع أحدهما دون الآخر دون استخدام معاملات موزعة بطيئة؟",
+    hints: [
+      "ماذا يحدث إذا نجحت الكتابة في قاعدة البيانات وفشل إرسال رسالة Kafka بسبب عطل شبكي؟",
+      "كيف تستغل المعاملة المحلية لقاعدة البيانات (Local ACID Transaction) لكتابة الحدث في جدول مخصص؟"
+    ],
+    answer: `### 1. معضلة الكتابة المزدوجة (The Dual-Write Problem):
+إذا كتب الكود في قاعدة البيانات أولاً ثم استدعى Kafka:
+- قد تنجح كتابة الـ DB ثم ينقطع الاتصال أو ينهار الخادم قبل إرسال رسالة Kafka، فيضيع الحدث للأبد.
+- وإذا عكست الترتيب وأرسلت لـ Kafka أولاً، فقد تفشل كتابة قاعدة البيانات لاحقاً، بينما تمت معالجة الحدث بالخطأ لدى المستهلكين.
+
+### 2. نمط صندوق الصادر الموثوق (Transactional Outbox Pattern):
+بدلاً من محاولة إرسال الرسالة لـ Kafka مباشرة من كود الخدمة:
+1. يتم إنشاء جدول إضافي في نفس قاعدة بيانات الخدمة باسم outbox.
+2. في **نفس المعاملة المحلية الواحدة (Single Local ACID Transaction)**، يقوم التطبيق بإدراج بيانات الطلب في جدول orders وإدراج الحدث المطلوب إرساله في جدول outbox.
+3. إما أن تنجح الخطوتان معاً بنسبة 100% أو تفشلا معاً دون أي تعارض بيانات.
+
+### 3. نقل الرسائل عبر تقنية التقاط تغييرات البيانات (Change Data Capture - CDC):
+- نستخدم محرك CDC موثوق (مثل **Debezium** المتصل بـ Kafka Connect).
+- يقوم Debezium بقراءة سجل المعاملات الثنائي المنخفض لقاعدة البيانات مباشرة (مثل PostgreSQL WAL أو MySQL Binlog) بشكل غير متزامن.
+- بمجرد رؤية عملية إدراج جديدة في جدول الـ Outbox، يقوم المحرك باستخراج الحدث ودفعه فوراً وبشكل مضمون إلى Kafka مع ضمانات (At-least-once delivery).
+- **النتيجة**: اتساق تام وسرعة فائقة دون أقفال شبكية أو إبطاء مسار طلبات المستخدم.`,
+    keywords: ["transactional outbox", "cdc", "debezium", "dual-write", "wal", "kafka connect", "event-driven"]
+  },
+  {
+    id: "iq-exp-5",
+    difficulty: "expert",
+    difficultyLabel: "خبير (Staff+ Core)",
+    category: "Global Architecture",
+    categoryAr: "المعمارية العالمية والمناطق المتعددة",
+    title: "معمارية المراكز المتعددة النشطة (Multi-Region Active-Active Architecture)",
+    titleEn: "Multi-Region Active-Active Deployment: Challenges & Solutions",
+    question: "لتحقيق توافرية فائقة وتأخير منخفض، ترغب في نشر النظام في 3 قارات بحيث يخدم كل مركز مستخدميه محلياً مع إمكانية تحويل حركة المرور عند سقوط قارة بأكملها. ما هي أكبر التحديات التقنية التي تواجهك؟",
+    hints: [
+      "تذكر أن سرعة الضوء في الألياف الزجاجية تفرض تأخيراً فيزيائياً حتمياً (100ms+ بين أمريكا وآسيا).",
+      "كيف تمنع تعارض الكتابة المتزامنة لنفس الحساب المصرفي في منطقتين مختلفتين؟"
+    ],
+    answer: `### 1. القيود الفيزيائية وحتمية التزامن غير المتزامن:
+- زمن انتقال البيانات بين قارتين (مثل فرجينيا وسنغافورة) يستغرق 150-200 ملي ثانية بفعل سرعة الضوء.
+- التكرار المتزامن عبر القارات (Synchronous Replication) سيجعل كل عملية كتابة تستغرق مئات الملي ثوانٍ، وهو أمر غير مقبول عملياً؛ لذلك يجب الاعتماد على **التكرار غير المتزامن (Asynchronous Replication)** مع قبول نموذج الاتساق النهائي (Eventual Consistency).
+
+### 2. استراتيجية توجيه وتقسيم البيانات (Data Partitioning & Home Region):
+- **تخصيص منطقة موطن للمستخدم (User-Pinned Home Region)**:
+  - تقسيم المستخدمين جغرافياً: بيانات المستخدمين في الشرق الأوسط موطنها مركز بيانات أوروبا، وتتم كافة عمليات الكتابة حصراً في مركز موطنهم لتفادي التعارض.
+  - إذا كان المستخدم مسافراً إلى آسيا، يتم توجيه طلبات قراءته محلياً من الكاش الآسيوي، بينما توجه كتاباته إلى مركزه الأصلي عبر شبكة سحابية خاصة مخصصة (Cloud Backbone).
+
+### 3. استراتيجيات حل تعارض الكتابة (Conflict Resolution):
+عند حدوث كتابات متزامنة لنفس الكيان في منطقتين:
+- **آخر كتابة تكسب (Last-Write-Wins - LWW)**: بالاعتماد على ساعات موحدة وفائقة الدقة مثل Google TrueTime API (بنوك الساعات الذرية و GPS) لتوليد أختام زمنية لا تتعارض.
+- **هياكل البيانات الخالية من التعارض (Conflict-Free Replicated Data Types - CRDTs)**: مفيدة جداً لعدادات الإعجابات والتعليقات المشتركة وسجلات التعديل التشاركي، حيث تندمج الحالات رياضياً دون أي تدخل يدوي.
+
+### 4. التوجيه عند انهيار منطقة بالكامل (Failover):
+- استخدام **Geo-DNS / Anycast BGP Routing** لتحويل الزيارات في ثوانٍ معدودة بعيداً عن المنطقة المنكوبة إلى أقرب منطقة تعمل بنجاح.`,
+    keywords: ["multi-region", "active-active", "truetime", "crdt", "disaster recovery", "geo-dns", "conflict resolution"]
+  },
+
+  // ==========================================
+  // LEVEL 5: SPECIALIZED FULL-STACK & INTERNALS (React, Next.js, Express.js)
+  // ==========================================
+
+  // --- REACT INTERNALS & ARCHITECTURE ---
+  {
+    id: "iq-react-1",
+    difficulty: "medium",
+    difficultyLabel: "متوسط (Frontend Engine)",
+    category: "React.js",
+    categoryAr: "محرك وداخليات React",
+    title: "المحرك الداخلي لـ React: كيف يعمل React Fiber وخوارزمية Reconciliation؟",
+    titleEn: "React Fiber Architecture & Reconciliation Algorithm Deep Dive",
+    question: "لماذا أعادت Meta كتابة محرك React بالكامل وأطلقت React Fiber؟ وما الفرق بين Virtual DOM القديم المبني على الـ Stack والمحرك الجديد؟ وما هي مراحل Render Phase و Commit Phase؟",
+    hints: [
+      "فكر في معضلة حجب الخيط الرئيسي (Main Thread Blocking) عند تحديث شجرة مكونات ضخمة.",
+      "ما هي بنية البيانات التي يعتمد عليها Fiber (Linked List) وكيف تدعم المقاطعة والاستئناف (Time Slicing)؟",
+      "في أي مرحلة تحدث التغييرات الفعلية على DOM الحقيقي للمتصفح؟"
+    ],
+    answer: `### 1. لماذا استُبدل محرك Stack Reconciler القديم بـ React Fiber؟
+- **المحرك القديم (Stack Reconciler)**:
+  - كان يعمل بشكل متزامن وحابس (Synchronous & Recursive).
+  - إذا كانت الشجرة تحتوي على آلاف المكونات، يبدأ React بتحديثها ولا يتوقف حتى ينتهي تماماً.
+  - خلال هذه الفترة، يتجمد الخيط الرئيسي (Main Thread)، فلا يمكن للمتصفح معالجة تفاعلات المستخدم (النقر، الكتابة، حركة الماوس) أو الرسوم المتحركة (60fps)، مما يسبب تقطيعاً وتجربة بطيئة (Jank).
+- **محرك React Fiber**:
+  - تم تحويل عملية المقارنة إلى **وحدات عمل صغيرة يمكن مقاطعتها واستئنافها (Incremental Rendering / Time Slicing)**.
+  - تخصيص أولويات للمهام: نقرات المستخدم ومدخلات لوحة المفاتيح لها أولوية قصوى (Immediate/User-blocking)، بينما جلب البيانات في الخلفية له أولوية منخفضة.
+
+### 2. بنية عقدة الـ Fiber (Fiber Node Structure):
+كل عنصر في React يقابله كائن Fiber يعمل كـ **قائمة متصلة مزدوجة الاتجاه (Singly Linked List Tree)**:
+- \`child\`: يشير إلى الابن المباشر الأول فقط.
+- \`sibling\`: يشير إلى الأخ المباشر التالي.
+- \`return\`: يشير إلى المكون الأب (للعودة إليه عند انتهاء معالجة الأبناء).
+- هذه البنية تسمح لـ React بالتوقف بعد معالجة أي عقدة، وفحص هل هناك إدخال مستخدم في المتصفح (\`requestIdleCallback\` / \`scheduler\`)، ثم استئناف العمل من نفس العقدة دون فقدان السياق.
+
+### 3. المرحلتان الأساسيتان لتحديث React (Two-Phase Architecture):
+1. **مرحلة التصيير (Render Phase - غير متزامنة وقابلة للإلغاء)**:
+   - يستعرض React شجرة الـ Fibers ويحسب الفروقات (Diffing).
+   - يستخدم نمط **Double Buffering**: توجد شجرة حالية تظهر في المتصفح (\`current\`) وشجرة ثانية تُبنى في الذاكرة بالخلفية (\`workInProgress\`).
+   - يمكن مقاطعتها أو إلغاؤها إذا وصل تحديث ذو أولوية أعلى.
+2. **مرحلة التثبيت (Commit Phase - متزامنة وغير قابلة للمقاطعة)**:
+   - بمجرد اكتمال الـ Render Phase بنجاح، يُطبّق React قائمة التأثيرات (Effect Tag / Flags) دفعة واحدة وبسرعة على الـ Real DOM.
+   - تشغيل الـ Lifecycle Hooks ومؤثرات \`useLayoutEffect\` متزامناً ثم \`useEffect\` غير متزامن.`,
+    keywords: ["react fiber", "reconciliation", "virtual dom", "render phase", "commit phase", "time slicing", "double buffering"]
+  },
+  {
+    id: "iq-react-2",
+    difficulty: "hard",
+    difficultyLabel: "متقدم (Frontend Performance)",
+    category: "React.js",
+    categoryAr: "محرك وداخليات React",
+    title: "تفكيك أزمات إعادة التصيير (Re-renders) وإدارة الحالة وأسرار useMemo و useCallback",
+    titleEn: "React Re-render Mechanics, Memoization Pitfalls & Context Performance",
+    question: "متى يعيد المكون في React تصيير نفسه بدقة؟ وما هي الأخطاء الشائعة عند استخدام useMemo و useCallback و React.memo؟ وكيف تمنع انهيار أداء التطبيق عند استخدام React Context API؟",
+    hints: [
+      "هل إعادة تصيير المكون الأب تعيد تصيير الأبناء دائماً حتى لو لم تتغير الـ Props؟",
+      "تذكر المساواة المرجعية (Referential Equality) للكائنات والدوال في جافاسكريبت.",
+      "ماذا يحدث لكل المكونات المشتركة في Context عندما يتغير حقل واحد فقط من كائن الحالة؟"
+    ],
+    answer: `### 1. متى يعيد المكون في React تصيير نفسه (What triggers a Re-render)؟
+المكون يعيد تصيير نفسه في 4 حالات فقط:
+1. **تغير حالته المحلية (State Change via setState)**.
+2. **إعادة تصيير المكون الأب المباشر (Parent Re-render)** — *وهذا السلوك الافتراضي بغض النظر عما إذا تغيرت الـ Props أم لا!*
+3. **تغير قيمة الـ Context المستهلك بواسطة المكون**.
+4. **تغير قيمة مخصصة في Custom Hook يستخدمه المكون**.
+
+### 2. الفهم العميق لـ React.memo و useCallback و useMemo:
+- **React.memo**:
+  - يقوم بعمل فحص سطحي (Shallow Comparison) للـ Props. إذا لم تتغير الـ Props، يتجاوز إعادة تصيير المكون.
+  - **الفخ الشائع (The Trap)**: إذا قمت بتمرير دالة سهمية (\`onClick={() => doSomething()}\`) أو كائن (\`style={{ color: 'red' }}\`)، فإن جافاسكريبت تنشئ مرجعاً جديداً تماماً في الذاكرة مع كل تصيير للأب، مما يجعل فحص \`React.memo\` يفشل دائماً وتضيع فائدته!
+- **useCallback**:
+  - لا يُسرّع الدالة نفسها! وظيفته الوحيدة هي **الحفاظ على المساواة المرجعية (Referential Identity)** للدالة عبر التصييرات، لمنع كسر \`React.memo\` للأبناء.
+- **useMemo**:
+  - تخزين مؤقت لنتيجة عملية حسابية ثقيلة (Expensive Computation)، أو الحفاظ على ثبات مرجع كائن يُمرر في شجرة الـ Props أو مصفوفة اعتماديات (\`deps\`).
+
+### 3. معضلة الأداء في Context API والحل المعماري:
+- **المشكلة**: إذا خزنت كائناً يحتوي على بيانات المستخدم والسلة والمظهر (\`{ user, cart, theme }\`) في Context واحد:
+  - أي تعديل على \`cart\` سيجبر **كل المكونات** التي تستدعي \`useContext\` على إعادة التصيير، حتى المكونات التي لا تهتم إلا بـ \`theme\`!
+- **الحلول المعمارية (Staff Best Practices)**:
+  1. **تقسيم الـ Context (Context Splitting)**: فصل السياقات غير المترابطة (\`UserContext\`, \`CartContext\`, \`ThemeContext\`).
+  2. **فصل الحالة عن دوال التحديث**: إنشاء سياق للبيانات وسياق للدوال (\`CartStateContext\` و \`CartDispatchContext\`).
+  3. **الانتقال لمكتبات الحالة الذرية (Atomic/Selector State)**: استخدام أطر مثل **Zustand** أو **Jotai**؛ لأنها تتيح اشتراكات دقيقة (Selective Subscriptions عبر \`useStore(state => state.cart.count)\`) وتعيد تصيير المكون فقط عند تغير الحقل المحدد بالذات.`,
+    keywords: ["react rerender", "usememo", "usecallback", "react memo", "context api", "referential equality", "zustand"]
+  },
+  {
+    id: "iq-react-3",
+    difficulty: "hard",
+    difficultyLabel: "متقدم (Frontend Engine)",
+    category: "React.js",
+    categoryAr: "محرك وداخليات React",
+    title: "داخليات الـ Hooks وقواعدها الصارمة ونمط Concurrent Features (useTransition)",
+    titleEn: "React Hooks Internals & Concurrent Features (useTransition, Suspense)",
+    question: "كيف يخزن React قيم الـ Hooks داخلياً بدون تمرير معرّف فريد لكل Hook؟ ولماذا يُحظر وضعها داخل الشروط (if) والحلقات (loops)؟ وما دور useTransition في تحسين استجابة الواجهة؟",
+    hints: [
+      "فكر في كيفية تعقب React للـ Hooks: هل هي مجرد مصفوفة أو قائمة متصلة تعتمد على ترتيب الاستدعاء؟",
+      "ما الفرق بين التحديث العاجل (Urgent Update) والتحديث الانتقالي (Transition Update) في React 18+؟"
+    ],
+    answer: `### 1. كيف تعمل الـ Hooks في الكواليس (Hooks Internals)؟
+- لا يعتمد React على أسماء المتغيرات، بل على **قائمة متصلة (Linked List of Hook Objects)** مخزنة على عقدة الـ Fiber الخاصة بالمكون (\`fiber.memoizedState\`).
+- عند تصيير المكون للمرة الأولى:
+  - يتم إنشاء عقدة لكل Hook: \`{ memoizedState: initialValue, next: nextHookNode, queue: ... }\`.
+  - مؤشر داخلي (\`workInProgressHook\`) يتنقل عبر العقد خطوة بخطوة بالترتيب التتابعي الدقيق.
+- عند إعادة التصيير (Update):
+  - يعيد React قراءة القائمة المتصلة من البداية، ويطابق كل استدعاء للـ Hook مع العقدة التالية في القائمة.
+- **لماذا يُمنع وضع Hooks داخل الشروط أو الحلقات (Rule of Hooks)؟**:
+  - إذا وُضع Hook داخل \`if\` ولم يتحقق الشرط في التصيير الثاني، سينكسر مؤشر الترتيب (Index mismatch)؛ وسيحصل الـ Hook الثاني على قيمة وحالة الـ Hook الأول، مما يؤدي لانهيار فوري في حالة التطبيق.
+
+### 2. ميزات التزامن ومفهوم useTransition و useDeferredValue (React 18+):
+في النسخ السابقة، كانت جميع تحديثات الحالة متزامنة وعاجلة. مع محرك التزامن (Concurrent React):
+- **التحديثات العاجلة (Urgent Updates)**: الإدخال المباشر للمستخدم في مربع نصي، النقر، التحريك. يجب أن تظهر فوراً.
+- **التحديثات غير العاجلة (Transitions)**: تصفية قائمة مكونة من 10,000 عنصر بناءً على ما كتبه المستخدم في مربع البحث.
+- **useTransition**:
+\`\`\`javascript
+const [isPending, startTransition] = useTransition();
+
+function handleSearch(e) {
+  // تحديث عاجل: انعكاس الحرف فوراً في حقل الإدخال دون أي تأخير
+  setInputValue(e.target.value);
+
+  // تحديث انتقالي: حوسبة الفلترة وتحديث القائمة الثقيلة في الخلفية
+  startTransition(() => {
+    setSearchQuery(e.target.value);
+  });
+}
+\`\`\`
+- **الفائدة الهندسية**: يظل حقل الإدخال سريع الاستجابة وخالياً من أي تجمد؛ وإذا كتب المستخدم حرفاً جديداً قبل انتهاء الفرز السابق، يقوم React بإلغاء الفرز القديم وبدء فرز جديد فوراً!`,
+    keywords: ["hooks internals", "memoizedstate", "usetransition", "usedeferredvalue", "concurrent react", "linked list"]
+  },
+
+  // --- NEXT.JS ARCHITECTURE & RENDERING ---
+  {
+    id: "iq-next-1",
+    difficulty: "medium",
+    difficultyLabel: "متوسط (Next.js Arch)",
+    category: "Next.js",
+    categoryAr: "معمارية Next.js",
+    title: "مقارنة استراتيجيات الرندرة في Next.js: SSR مقابل SSG مقابل ISR مقابل CSR",
+    titleEn: "Next.js Rendering Strategies: SSR vs SSG vs ISR vs CSR Trade-offs",
+    question: "فصّل بدقة الفروق المعمارية ومسار تنفيذ الطلب بين: Server-Side Rendering (SSR)، Static Site Generation (SSG)، Incremental Static Regeneration (ISR)، و Client-Side Rendering (CSR).",
+    hints: [
+      "فكر في وقت توليد كود الـ HTML: وقت البناء (Build-time) أم وقت الطلب (Request-time)؟",
+      "كيف تخدم ملايين الصفحات الثابتة مع تحديثها فورياً في الخلفية باستخدام ISR؟",
+      "ما تأثير كل نمط على محركات البحث (SEO) ووقت أول بايت (TTFB)؟"
+    ],
+    answer: `### 1. جدول المقارنة المعمارية:
+| الاستراتيجية | وقت التوليد | سرعة الـ TTFB | الحمل على الخادم | التوافق مع الـ SEO | أفضل استخدام |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **CSR (Client-Side)** | في متصفح العميل عبر JS | سريع جداً للـ HTML الفارغ، بطيء للظهور | معدوم (ملفات ثابتة) | ضعيف إلى متوسط | لوحات التحكم الداخلية (Dashboards) |
+| **SSG (Static)** | وقت البناء (Build-time) | خارقة (Sub-millisecond عبر CDN) | معدوم بعد النشر | مثالي 100% | المدونات، التوثيق، الصفحات التسويقية |
+| **SSR (Server-Side)** | لحظياً مع كل طلب (Request-time)| أبطأ (يعتمد على سرعة الخادم والـ DB) | مرتفع مع زيادة الزيارات | مثالي 100% | صفحات البيانات الحية المخصصة للمستخدم |
+| **ISR (Incremental)** | وقت البناء + تحديث خلفي بمهلة | خارقة مثل SSG من الـ CDN Cache | منخفض جداً | مثالي 100% | منصات التجارة الإلكترونية، الأخبار |
+
+### 2. التعمق في ISR (Incremental Static Regeneration):
+- **كيف يعمل (Stale-While-Revalidate)**:
+  1. يُبنى الموقع وتُخزن الصفحات الثابتة على شبكة الـ CDN مع تحديد \`revalidate: 60\` ثانية.
+  2. الزوار خلال أول 60 ثانية يحصلون على الصفحة فوراً من كاش الـ CDN.
+  3. أول زائر بعد الدقيقة 60: يحصل فوراً على النسخة القديمة المحفوظة (لا ينتظر!)، وفي الوقت نفسه يُطلق Next.js مهمة في الخلفية لجلب البيانات الجديدة وبناء النسخة الحديثة وتحديث كاش الـ CDN.
+  4. جميع الزوار اللاحقين يحصلون على الصفحة المحدثة دون أي استهلاك لموارد قاعدة البيانات في كل طلب.
+- **On-Demand Revalidation**: إمكانية إفراغ الكاش وتحديث الصفحة فوراً عبر Webhook عند قيام الكاتب بتعديل المقال في CMS باستخدام \`revalidatePath('/posts/1')\`.`,
+    keywords: ["next.js rendering", "ssr", "ssg", "isr", "csr", "stale-while-revalidate", "ttfb", "revalidatepath"]
+  },
+  {
+    id: "iq-next-2",
+    difficulty: "hard",
+    difficultyLabel: "متقدم (Next.js Arch)",
+    category: "Next.js",
+    categoryAr: "معمارية Next.js",
+    title: "مكونات الخادم والعميل (React Server Components - RSC) في App Router",
+    titleEn: "React Server Components (RSC) Architecture in Next.js App Router",
+    question: "يمثل App Router نقلة معمارية جذرية مبنية على React Server Components (RSC). ما الفرق بين مكونات الخادم ومكونات العميل ('use client')؟ وما هو RSC Payload؟ ولماذا لا ترسل مكونات الخادم أي كود جافاسكريبت للمتصفح؟",
+    hints: [
+      "هل المكونات التي لا تحمل 'use client' تُرسل حزمها البرمجية (Bundle size) للمتصفح؟",
+      "كيف يتعامل RSC مع الاتصال المباشر بقاعدة البيانات دون إنشاء واجهة API وسيطة؟",
+      "تذكر أن 'use client' لا يعني أن المكون يعمل في المتصفح فقط؛ بل يتم تصييره مبدئياً على السيرفر أيضاً!"
+    ],
+    answer: `### 1. المفهوم الجوهري لـ React Server Components (RSC):
+- في المعمارية التقليدية (Pages Router)، حتى لو تم تصيير المكون على الخادم (SSR)، يجب إرسال كود الجافاسكريبت الخاص بالمكون بالكامل إلى المتصفح ليقوم بعملية الترطيب (Hydration).
+- **في RSC (الافتراضي في App Router)**:
+  - المكونات تُنفذ حصراً على خادم Node.js.
+  - يمكنها القراءة مباشرة من نظام الملفات وقواعد البيانات (PostgreSQL/Prisma) ومفاتيح الأسرار دون الحاجة لإنشاء REST API وسيطة.
+  - **حجم حزمتها في المتصفح صفر (Zero-Bundle Size)**: إذا استخدمت مكتبة ضخمة لمعالجة الماركداون أو التواريخ (مثل \`date-fns\` أو \`marked\`) داخل Server Component، فإن كود المكتبة يظل على الخادم ولا يُرسل منه بايت واحد للمتصفح!
+
+### 2. ما هو RSC Payload ومسار الدمج؟
+- الخادم لا يرسل للمتصفح كود HTML فقط، بل يرسل تدفقاً نصياً يُعرف بـ **RSC Payload**:
+  - يحتوي على هيكل شجرة المكونات وتنسيقات JSON للـ Props والبيانات الجاهزة ومواضع المكونات التفاعلية (Slots/Placeholders للمكونات العميلة).
+- المتصفح يقرأ هذا التدفق ويدمجه بسلاسة في شجرة الـ UI دون فقدان الحالة الحالية للمتصفح.
+
+### 3. ما الذي يعنيه توجيه 'use client' حقاً؟
+- **خطأ شائع**: الاعتقاد بأن \`'use client'\` تجعل المكون يُنفذ في المتصفح فقط.
+- **الحقيقة الهندسية**: \`'use client'\` تُعرّف **حدود الترطيب (Hydration Boundary)**.
+  - المكون العميل يتم تصييره أيضاً على الخادم إلى HTML أولي في أول طلب لسرعة الـ SEO والظهور الأولي، لكن كود الجافاسكريبت الخاص به يُرسل إلى المتصفح ليتم ربطه بالأحداث التفاعلية (Event Listeners, \`useState\`, \`useEffect\`).`,
+    keywords: ["react server components", "rsc", "use client", "rsc payload", "app router", "hydration boundary", "zero bundle size"]
+  },
+  {
+    id: "iq-next-3",
+    difficulty: "expert",
+    difficultyLabel: "خبير (Next.js Internals)",
+    category: "Next.js",
+    categoryAr: "معمارية Next.js",
+    title: "مستويات التخزين المؤقت الأربعة في Next.js (The 4 Caching Layers) وإدارتها",
+    titleEn: "Next.js 14/15 Deep Dive: The 4 Caching Mechanisms & Cache Invalidation",
+    question: "يمتلك Next.js App Router نظام كاش معقد متعدد الطبقات يسبب حيرة للكثير من المهندسين. اشرح المستويات الأربعة بالتفصيل: Request Memoization، Data Cache، Full Route Cache، و Router Cache.",
+    hints: [
+      "أي مستوى من الكاش يمنع تكرار نفس استدعاء fetch داخل شجرة التصيير الواحدة؟",
+      "أين يعيش الـ Router Cache (في الذاكرة بالمتصفح أم على القرص في السيرفر)؟",
+      "كيف تقوم بإبطال الكاش باستخدام revalidateTag و revalidatePath؟"
+    ],
+    answer: `### المستويات الأربعة للكاش في Next.js:
+
+1. **مذكرة الطلب الواحد (Request Memoization - Server-side)**:
+   - **المكان والمدة**: في ذاكرة الخادم، وتعيش فقط خلال **دورة حياة الطلب الواحد (Per-request lifecycle)**.
+   - **الوظيفة**: إذا قمت باستدعاء \`fetch('https://api.example.com/user')\` في مكون الـ Header، ونفس الاستدعاء في مكون الـ Sidebar، ونفسه في الـ Page، يقوم Next.js تلقائياً بتنفيذ طلب شبكي واحد فقط وإعادة استخدام النتيجة لباقي المكونات دون أي إهدار، ثم تُمسح الذاكرة فور انتهاء الاستجابة.
+
+2. **كاش البيانات الثابت (Data Cache - Server-side Persistent)**:
+   - **المكان والمدة**: على قرص خادم Next.js، ويبقى مستمراً عبر كافة الطلبات وكافة المستخدمين وعبر عمليات إعادة تشغيل الخادم.
+   - **الوظيفة**: تخزين نتائج \`fetch(..., { next: { revalidate: 3600, tags: ['products'] } })\`.
+   - **الإبطال**: يتم إفراغه عبر الوقت (Time-based) أو عند الطلب عبر الوسوم: \`revalidateTag('products')\`.
+
+3. **كاش المسار الكامل (Full Route Cache - Server-side)**:
+   - **المكان والمدة**: على الخادم (ويمكن دفعه إلى Edge CDN).
+   - **الوظيفة**: تخزين كود HTML والـ RSC Payload للمسار الثابت بالكامل بعد تصييره في وقت البناء أو عند أول طلب.
+
+4. **كاش الموجه في المتصفح (Router Cache - Client-side In-Memory)**:
+   - **المكان والمدة**: في ذاكرة متصفح العميل أثناء تصفح الجلسة الواحدة.
+   - **الوظيفة**: عند التمرير أو ظهور روابط \`<Link href="/about">\` في الشاشة (Prefetching)، يخزن المتصفح الـ RSC Payload في ذاكرته؛ فعند النقر على الرابط، يكون الانتقال فورياً ولحظياً كأنه تطبيق محلي (SPA Instant Navigation) دون طلب الخادم إطلاقاً.
+   - **الإبطال**: يتم تحديثه عبر \`router.refresh()\` أو تلقائياً بعد مرور 30 ثانية (للمسارات الديناميكية) أو 5 دقائق (للمسارات الثابتة).`,
+    keywords: ["next.js caching", "request memoization", "data cache", "full route cache", "router cache", "revalidatetag", "prefetching"]
+  },
+
+  // --- EXPRESS.JS & NODE.JS RUNTIME INTERNALS ---
+  {
+    id: "iq-node-1",
+    difficulty: "medium",
+    difficultyLabel: "متوسط (Backend Runtime)",
+    category: "Node.js & Express",
+    categoryAr: "محرك Node.js و Express",
+    title: "المحرك الداخلي لـ Node.js: تفكيك حلقة الأحداث (Event Loop) ومراحلها الست",
+    titleEn: "Node.js Event Loop Phases, Libuv & Microtasks Priority",
+    question: "بما أن Node.js أحادي الخيط (Single-threaded)، كيف يتعامل مع آلاف الاتصالات المتزامنة؟ اشرح مراحل الـ Event Loop، وأين يُنفذ كود setTimeout و setImmediate و process.nextTick؟",
+    hints: [
+      "فكر في دور مكتبة Libuv ومجمع خيوط المعالجة في الخلفية (Thread Pool).",
+      "ما هي طوابير المهام الصغرى (Microtask Queue) وكيف تسبق كل مراحل الـ Event Loop؟",
+      "ما الفرق الدقيق بين setImmediate و setTimeout(fn, 0)؟"
+    ],
+    answer: `### 1. معمارية Node.js ومكتبة Libuv:
+خيط الجافاسكريبت الرئيسي أحادي (Single-threaded)، لكن Node.js مدعوم بمكتبة **Libuv** المكتوبة بـ C++:
+- **عمليات الإدخال والإخراج غير المحجوبة (Non-blocking I/O)**: تفويض عمليات الشبكة (Sockets/HTTP) لنواة نظام التشغيل مباشرة (عبر epoll في Linux أو kqueue في macOS).
+- **مجمع خيوط المعالجة (Worker Thread Pool - افتراضياً 4 خيوط)**: لمعالجة العمليات الحسابية الثقيلة التي لا تدعمها نواة النظام بشكل غير متزامن، مثل تشفير النصوص (Crypto/Hashing)، وضغط الملفات (Zlib)، وبعض عمليات القراءة من القرص (File System).
+
+### 2. مراحل حلقة الأحداث (Event Loop Phases بالترتيب الدقيق):
+1. **Timers Phase**: تنفيذ دوال رد النداء المنتهية لـ \`setTimeout\` و \`setInterval\`.
+2. **Pending Callbacks Phase**: تنفيذ نداءات أخطاء النظام السابقة (مثل أخطاء TCP ECONNREFUSED).
+3. **Idle, Prepare Phase**: استخدامات داخلية لمحرك Libuv.
+4. **Poll Phase**: المرحلة الأهم! انتظار استقبال أحداث الإدخال والإخراج الجديدة (قراءة شبكة، اتصالات جديدة) وتنفيذ معالجاتها.
+5. **Check Phase**: مخصصة حصرياً لتنفيذ استدعاءات \`setImmediate()\`.
+6. **Close Callbacks Phase**: تنفيذ أحداث إغلاق الاتصالات (مثل \`socket.on('close', ...)\`).
+
+### 3. أولوية الـ Microtasks الخارقة (process.nextTick و Promises):
+- **طابور المهام الصغرى (Microtask Queue)** لا ينتمي لمراحل الـ Event Loop!
+- بل يتم فحص وتنفيذ هذا الطابور **فوراً بين كل مرحلة وأخرى، وبين كل Callback فردي**:
+  - **الأولوية المطلقة**: \`process.nextTick()\` ينفذ أولاً قبل أي شيء.
+  - **الأولوية الثانية**: \`Promise.then() / catch / finally\` تنفذ بعد \`nextTick\`.
+- **تحذير للمقابلة**: الإكثار من استدعاء \`process.nextTick\` بشكل تكراري متداخل يؤدي لتجويع حلقة الأحداث (I/O Starvation) وتجمد الخادم بالكامل!`,
+    keywords: ["event loop", "libuv", "thread pool", "process.nexttick", "setimmediate", "microtasks", "macrotasks", "epoll"]
+  },
+  {
+    id: "iq-node-2",
+    difficulty: "medium",
+    difficultyLabel: "متوسط (Backend Runtime)",
+    category: "Node.js & Express",
+    categoryAr: "محرك Node.js و Express",
+    title: "معمارية Express.js الداخلية: تدفق البرمجيات الوسيطة (Middleware Pipeline) ومعالجة الأخطاء",
+    titleEn: "Express.js Internals: Middleware Onion Model, Router Stack & Error Handling",
+    question: "كيف ينفذ Express.js البرمجيات الوسيطة (Middleware) داخلياً؟ وكيف يعرف Express أن دالة معينة هي Error-handling Middleware؟ وماذا يحدث إذا نسيت استدعاء next()؟",
+    hints: [
+      "فكر في خاصية Function.length في جافاسكريبت وكيف تكشف عدد معاملات الدالة.",
+      "ماذا يحدث للطلب المعلق (Hanging Request) في المتصفح إذا لم يُستدعَ next() أو res.send()؟",
+      "كيف يمرر Express الأخطاء تلقائياً عبر استدعاء next(err)؟"
+    ],
+    answer: `### 1. معمارية مكدس الموجه (Express Router Stack):
+- داخلياً، يحتفظ تطبيق Express بمصفوفة طبقات تُدعى \`app._router.stack\`.
+- كل استدعاء لـ \`app.use()\` أو \`app.get()\` ينشئ كائن \`Layer\` يحتوي على مسار المطابقة (Regex Path) والدالة المطلوب تنفيذها.
+- عند وصول طلب، يبدأ Express من الطبقة الأولى، وإذا تطابق المسار ينفذ الدالة ممرراً لها \`(req, res, next)\`.
+
+### 2. آلية عمل دالة next():
+- \`next\` هي دالة تكرارية داخلية تحتفظ بمؤشر رقمي (\`idx++\`) يشير إلى الطبقة التالية في المصفوفة.
+- **إذا نسيت استدعاء \`next()\` أو \`res.send()\`**:
+  - يتوقف تدفق التنفيذ تماماً، ويظل اتصال العميل معلقاً (Hanging Connection) حتى تنتهي مهلة الخادم (Socket Timeout)، مما يستهلك مجمعات الاتصال وموارد الذاكرة في السيرفر.
+
+### 3. كيف يكتشف Express برمجيات معالجة الأخطاء (Error Handlers)؟
+- في جافاسكريبت، تمتلك كل دالة خاصية داخلية اسمها \`fn.length\` تمثل **عدد المعاملات المعرفة في رأس الدالة**.
+- يفحص Express عند تسجيل الـ Middleware:
+  - إذا كان \`fn.length === 4\` (أي تستقبل \`err, req, res, next\`)، يصنفها كـ **Error Handler**.
+  - إذا كان \`fn.length < 4\`، يصنفها كـ Regular Middleware.
+- **التدفق**: عندما تستدعي \`next(new Error('Boom!'))\`:
+  - يتخطى Express فوراً كافة البرمجيات الوسيطة العادية في المصفوفة، ويبحث عن أول دالة في المكدس تمتلك 4 معاملات ليمرر لها الخطأ.
+
+### 4. معالجة الوعود غير المتزامنة (Async Error Handling في Express 4 مقابل Express 5):
+- في Express 4: الأخطاء التي تحدث داخل دوال غير متزامنة (\`async/await\`) لا يلتقطها Express تلقائياً وتؤدي لـ \`UnhandledPromiseRejection\`، وتستلزم تغليفها بـ \`try/catch\` واستدعاء \`next(err)\`.
+- في Express 5: تم حل هذه المشكلة، وأصبح المحرك يلتقط الوعود المرفوضة من دوال الـ async تلقائياً ويمررها لـ Error Handler.`,
+    keywords: ["express middleware", "router stack", "next function", "error handling middleware", "function length", "async errors"]
+  },
+  {
+    id: "iq-node-3",
+    difficulty: "hard",
+    difficultyLabel: "متقدم (Backend Scale)",
+    category: "Node.js & Express",
+    categoryAr: "محرك Node.js و Express",
+    title: "التعامل مع تسرب الذاكرة (Memory Leaks) ومعالجة الملفات الضخمة عبر Streams",
+    titleEn: "Memory Leak Diagnostics & Stream Pipeline Architecture in Node.js",
+    question: "إذا ارتفع استهلاك الذاكرة في خادم Express حتى وصل إلى حد الـ Heap وانهار النظام (OOM - Out of Memory)، كيف تحدد سبب التسرب؟ ولماذا يُحظر قراءة الملفات الكبيرة باستخدام fs.readFile()؟",
+    hints: [
+      "ما الفرق بين قراءة ملف بحجم 2GB في الذاكرة دفعة واحدة مقابل ضخه عبر Streams والـ Backpressure؟",
+      "تذكر مسببات تسرب الذاكرة الشائعة: المتغيرات العامة، الإغلاقات (Closures)، و Event Listeners غير الملغاة.",
+      "كيف تحلل لقطة الذاكرة (Heap Snapshot) في أدوات المطورين أو خوادم الإنتاج؟"
+    ],
+    answer: `### 1. معضلة fs.readFile() وقوة الـ Streams والضغط العكسي (Backpressure):
+- **لماذا يفشل fs.readFile() مع الأحجام الكبيرة؟**:
+  - \`fs.readFile()\` يقرأ محتوى الملف كاملاً إلى الذاكرة العشوائية (V8 Buffer) قبل إتاحته للكود.
+  - إذا كان حجم الملف 2GB، سيحجز فوراً 2GB من الـ Heap، وإذا طلبه مستخدمان في نفس الوقت سينهار خادم Node.js فوراً لتجاوزه حد الذاكرة المسموح به (Max Old Space Size).
+- **الحل المعماري عبر Streams و pipeline**:
+  - قراءة الملف في قطع صغيرة متتابعة (Chunks بحجم 64KB افتراضياً) وضخها مباشرة إلى استجابة الـ HTTP:
+\`\`\`javascript
+const { pipeline } = require('stream/promises');
+const fs = require('fs');
+
+app.get('/download-video', async (req, res) => {
+  const readStream = fs.createReadStream('./big-video.mp4');
+  res.setHeader('Content-Type', 'video/mp4');
+  // تدفق محمي يراعي الـ Backpressure وينظف الموارد تلقائياً عند انقطاع الاتصال
+  await pipeline(readStream, res);
+});
+\`\`\`
+  - **الضغط العكسي (Backpressure)**: إذا كانت سرعة قراءة القرص أسرع بكثير من سرعة اتصال شبكة العميل، يقوم الـ Stream بإيقاف قراءة القرص مؤقتاً حتى يفرغ العميل الحزم السابقة، مما يمنع تكدس الذاكرة.
+
+### 2. تشخيص وحل تسرب الذاكرة (Memory Leak Diagnostics):
+- **الأسباب الشائعة لتسرب الذاكرة في Express**:
+  1. **المتغيرات والمصفوفات العامة (Global Caches)**: حفظ كائنات المستخدمين في مصفوفة عامة \`global.cache = []\` دون تفريغ أو تحديد حد أقصى للذاكرة (استخدم Redis أو LRU Cache بحدود صارمة بدلاً من ذلك).
+  2. **مستمعو الأحداث غير المعزولين (Dangling Event Listeners)**: الاشتراك في \`emitter.on()\` داخل مسار الـ API دون استدعاء \`removeListener\` عند انتهاء الطلب.
+  3. **الإغلاقات البرمجية المغلقة (Retained Closures)**: الاحتفاظ بمراجع لكائنات ضخمة داخل دوال الـ Callback.
+- **خطوات التشخيص والحل**:
+  - التقاط لقطات للذاكرة (\`Heap Snapshots\`) باستخدام علم التشغيل \`--inspect\` وتحليلها في Chrome DevTools.
+  - مقارنة لقطتين (Comparison View) بين فترتي هدوء وضغط؛ لمعرفة الكائنات التي يتزايد عددها وحجمها المستبقى (Retained Size) ولا يقوم جامع القمامة (Garbage Collector) بتحريرها.`,
+    keywords: ["memory leak", "streams", "backpressure", "fs.readfile", "heap snapshot", "garbage collector", "v8 out of memory"]
+  },
+  {
+    id: "iq-node-4",
+    difficulty: "expert",
+    difficultyLabel: "خبير (Backend Scale)",
+    category: "Node.js & Express",
+    categoryAr: "محرك Node.js و Express",
+    title: "توسيع Express للإنتاج الفائق: Cluster Module، Worker Threads، والحماية من حجب الـ Event Loop",
+    titleEn: "Scaling Express.js: Cluster Mode, Worker Threads & Event Loop Blocking Defense",
+    question: "بما أن Node.js يعمل على نواة واحدة، كيف تستغل كامل أنوية المعالج (Multi-core CPUs)؟ وما الفرق الجوهري بين استخدام Cluster Module واستخدام Worker Threads؟ وكيف تكتشف العمليات التي تحجب الخادم (Sync CPU-bound tasks)؟",
+    hints: [
+      "هل تشترك عمليات الـ Cluster في نفس الذاكرة أم تعمل في مساحات ذاكرة منعزلة بالكامل (IPC)؟",
+      "متى تختار Worker Threads بدلاً من Cluster؟ (تلميح: العمليات الحسابية والمعالجة الرياضية).",
+      "ما تأثير استدعاء JSON.parse() على سلسلة نصية بحجم 50MB على باقي المستخدمين المتصلين؟"
+    ],
+    answer: `### 1. الاستفادة من كافة الأنوية عبر نمط الـ Clustering:
+- افتراضياً، يعمل خادم Express على نواة معالج واحدة (Core 1)، تاركاً باقي الأنوية (مثلاً 15 نواة أخرى في خادم سحابي) خاملة تماماً.
+- **وحدة Cluster (أو استخدام PM2 Cluster Mode)**:
+  - تقوم العملية الرئيسية (Master/Primary Process) بعمل تفريع (\`fork\`) لنسخ مطابقة من خادم Express بعدد أنوية الجهاز (\`os.cpus().length\`).
+  - العمليات المتفرعة (Worker Processes) تمتلك **مساحات ذاكرة منعزلة ومستقلة تماماً** وتتخاطب عبر الـ IPC.
+  - تشترك كافة العمليات في نفس منفذ الشبكة (Port 3000)، حيث تقوم نواة النظام أو العملية الرئيسية بتوزيع الاتصالات الواردة عليها بتقنية Round-Robin.
+
+### 2. مقارنة حاسمة: Cluster Module مقابل Worker Threads:
+| المعيار | Cluster Module | Worker Threads |
+| :--- | :--- | :--- |
+| **طبيعة العزل** | عمليات نظام تشغيل منفصلة (Separate OS Processes) | خيوط معالجة متعددة داخل نفس العملية (Multiple Threads in Same Process) |
+| **مشاركة الذاكرة** | لا تشترك بالذاكرة (عزل تام للأمان ومقاومة الأعطال) | تشترك في الذاكرة عبر \`SharedArrayBuffer\` لتبادل البيانات الفوري |
+| **زمن الإنشاء** | ثقيل نسبياً (يستهلك 30-50MB لكل عملية) | خفيف وسريع البدء |
+| **أفضل استخدام** | **توسيع خوادم الويب واستقبال طلبات HTTP المتوازية** | **المهام الحسابية الثقيلة (Image processing, Crypto, AI)** |
+
+### 3. الدفاع ضد حجب حلقة الأحداث (Event Loop Blocking):
+- العمليات الحسابية الثقيلة مثل فك تشفير مصفوفات ضخمة، \`JSON.parse(hugeString)\`، أو خوارزميات التجزئة المعقدة \`bcrypt.hashSync()\` تجمد الخيط الرئيسي بالكامل؛ فلا يمكن لأي مستخدم آخر فتح أي صفحة طوال مدة الحوسبة!
+- **الحلول المعمارية المعتمدة**:
+  1. **الترحيل إلى Worker Threads**: إرسال الحسابات الثقيلة لخيط منفصل وإرجاع النتيجة بالـ Promise.
+  2. **تقسيم الحوسبة (Time Slicing via setImmediate)**: تقسيم الحلقات التكرارية المليونية إلى دفعات صغيرة مع إفساح المجال لحلقة الأحداث بين الدفعات.
+  3. **مراقبة زمن تأخر الـ Event Loop (Event Loop Lag Monitoring)**: استخدام أدوات تتبع (مثل \`perf_hooks\` أو Prometheus metrics) لإطلاق إنذار فوري إذا تجاوز تأخر دورة الـ Loop حاجز الـ 50ms.`,
+    keywords: ["cluster module", "worker threads", "event loop blocking", "pm2", "multi-core", "sharedarraybuffer", "round-robin"]
+  }
 ];
+
+// Attach globally for browser script-tag loading
+if (typeof window !== 'undefined') {
+  window.InterviewQuestionsData = InterviewQuestionsData;
+}
