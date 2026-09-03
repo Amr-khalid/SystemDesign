@@ -162,6 +162,20 @@ const App = {
     }
   },
 
+  getData() {
+    if (this.currentLang === 'en' && typeof SystemDesignDataEn !== 'undefined') {
+      return SystemDesignDataEn;
+    }
+    return typeof SystemDesignData !== 'undefined' ? SystemDesignData : { modules: [] };
+  },
+
+  getInterviewQuestions() {
+    if (this.currentLang === 'en' && typeof InterviewQuestionsDataEn !== 'undefined') {
+      return InterviewQuestionsDataEn;
+    }
+    return typeof InterviewQuestionsData !== 'undefined' ? InterviewQuestionsData : [];
+  },
+
   t(key, ...args) {
     const langDict = this.i18n[this.currentLang] || this.i18n.ar;
     const val = langDict[key];
@@ -200,7 +214,7 @@ const App = {
   },
 
   updateProgressBar() {
-    const total = SystemDesignData.modules.length;
+    const total = this.getData().modules.length;
     const count = this.readModules.size;
     const pct = Math.round((count / total) * 100);
     const fillEl = document.getElementById('progressBarFill');
@@ -243,7 +257,8 @@ const App = {
     this.renderSidebarNav();
     
     // Re-render active module
-    const targetModule = SystemDesignData.modules.find(m => m.id === this.currentModuleId);
+    const data = this.getData();
+    const targetModule = data.modules.find(m => m.id === this.currentModuleId) || data.modules[0];
     if (targetModule) {
       this.renderModule(targetModule);
     }
@@ -406,12 +421,15 @@ const App = {
   handleRoute() {
     const hash = window.location.hash.replace('#', '') || 'module-1';
     
+    const data = this.getData();
+    const questions = this.getInterviewQuestions();
+    
     // Check if target is a module or a sub-item
-    let targetModule = SystemDesignData.modules.find(m => m.id === hash);
+    let targetModule = data.modules.find(m => m.id === hash);
     
     if (!targetModule) {
       // Search in questions or sections or algorithms
-      for (const m of SystemDesignData.modules) {
+      for (const m of data.modules) {
         if (m.sections && m.sections.some(s => s.id === hash)) {
           targetModule = m;
           break;
@@ -434,7 +452,7 @@ const App = {
           this.activeAlgoId = hash;
           break;
         }
-        if (m.isInterviewQuestions && typeof InterviewQuestionsData !== 'undefined' && InterviewQuestionsData.some(q => q.id === hash)) {
+        if (m.isInterviewQuestions && questions.some(q => q.id === hash)) {
           targetModule = m;
           break;
         }
@@ -442,7 +460,7 @@ const App = {
     }
 
     if (!targetModule) {
-      targetModule = SystemDesignData.modules[0];
+      targetModule = data.modules[0];
     }
 
     this.currentModuleId = targetModule.id;
@@ -469,14 +487,16 @@ const App = {
 
     let html = `<div class="nav-group-header">${this.t('navGroupTitle')}</div>`;
 
-    SystemDesignData.modules.forEach((mod) => {
+    const data = this.getData();
+    const questions = this.getInterviewQuestions();
+    data.modules.forEach((mod) => {
       let itemCount = 0;
       if (mod.sections) itemCount = mod.sections.length;
       else if (mod.problems) itemCount = mod.problems.length;
       else if (mod.caseStudies) itemCount = mod.caseStudies.length;
       else if (mod.studioChallenges) itemCount = mod.studioChallenges.length;
       else if (mod.algorithms) itemCount = mod.algorithms.length;
-      else if (mod.isInterviewQuestions && typeof InterviewQuestionsData !== 'undefined') itemCount = InterviewQuestionsData.length;
+      else if (mod.isInterviewQuestions) itemCount = questions.length;
 
       const isCompleted = this.readModules.has(mod.id);
       const titleDisplay = this.currentLang === 'en'
@@ -516,9 +536,10 @@ const App = {
     if (!container) return;
 
     const isRead = this.readModules.has(mod.id);
-    const modIndex = SystemDesignData.modules.findIndex(m => m.id === mod.id);
-    const prevMod = modIndex > 0 ? SystemDesignData.modules[modIndex - 1] : null;
-    const nextMod = modIndex < SystemDesignData.modules.length - 1 ? SystemDesignData.modules[modIndex + 1] : null;
+    const data = this.getData();
+    const modIndex = data.modules.findIndex(m => m.id === mod.id);
+    const prevMod = modIndex > 0 ? data.modules[modIndex - 1] : null;
+    const nextMod = modIndex < data.modules.length - 1 ? data.modules[modIndex + 1] : null;
 
     // Check if it's the Interactive Studio (Module 8)
     if (mod.isStudio) {
@@ -571,7 +592,7 @@ const App = {
       contentHtml += `
         <div class="diagram-container-card">
           <div class="diagram-header">
-            <span class="diagram-caption">مخطط معماري تفاعلي: ${mod.title}</span>
+            <span class="diagram-caption">${this.currentLang === 'en' ? 'Interactive Architecture Diagram' : 'مخطط معماري تفاعلي'}: ${mod.title}</span>
           </div>
           ${SystemDesignDiagrams.render(mod.diagramId)}
         </div>
@@ -656,7 +677,7 @@ const App = {
       const text = decodeURIComponent(encodedText);
       navigator.clipboard.writeText(text).then(() => {
         const orig = btn.innerHTML;
-        btn.innerHTML = 'تم النسخ بنجاح ✓';
+        btn.innerHTML = this.currentLang === 'en' ? 'Copied Successfully ✓' : 'تم النسخ بنجاح ✓';
         btn.style.background = 'var(--color-success)';
         btn.style.color = '#ffffff';
         setTimeout(() => {
@@ -678,7 +699,7 @@ const App = {
       <div class="content-wrapper">
         <!-- Studio Header -->
         <div class="module-header">
-          <span class="module-tag">القسم 8 من 9: المختبر العملي والاستوديو التفاعلي</span>
+          <span class="module-tag">${this.currentLang === 'en' ? 'Module 8 of 10: Interactive Studio & Simulator' : 'القسم 8 من 10: المختبر العملي والاستوديو التفاعلي'}</span>
           <h1 class="module-title">${mod.title}</h1>
           <p class="module-subtitle">${mod.subtitle}</p>
         </div>
@@ -710,19 +731,19 @@ const App = {
           <!-- Target Specs Bar -->
           <div class="specs-bar">
             <div class="spec-item">
-              <span class="spec-key">Throughput (حجم المرور)</span>
+              <span class="spec-key">Throughput (${this.currentLang === 'en' ? 'Traffic Volume' : 'حجم المرور'})</span>
               <span class="spec-val">${activeChallenge.targetSpecs.throughput}</span>
             </div>
             <div class="spec-item">
-              <span class="spec-key">Latency Target (زمن الاستجابة)</span>
+              <span class="spec-key">Latency Target (${this.currentLang === 'en' ? 'Response Latency' : 'زمن الاستجابة'})</span>
               <span class="spec-val">${activeChallenge.targetSpecs.latency}</span>
             </div>
             <div class="spec-item">
-              <span class="spec-key">Consistency (الاتساق المطلوب)</span>
+              <span class="spec-key">Consistency (${this.currentLang === 'en' ? 'Consistency Model' : 'الاتساق المطلوب'})</span>
               <span class="spec-val">${activeChallenge.targetSpecs.consistency}</span>
             </div>
             <div class="spec-item">
-              <span class="spec-key">Availability (التوافرية)</span>
+              <span class="spec-key">Availability (${this.currentLang === 'en' ? 'Target Uptime' : 'التوافرية'})</span>
               <span class="spec-val">${activeChallenge.targetSpecs.availability}</span>
             </div>
           </div>
@@ -730,8 +751,8 @@ const App = {
           <!-- Stage 1: Component Training & Breakdown -->
           <div class="training-section">
             <div class="training-title-row">
-              <span class="training-phase-tag">المرحلة 1: تدريب المكونات</span>
-              <h3 style="font-size:1.2rem; font-weight:800; color:var(--text-main);">فهم دور المكونات الأساسية للنظام</h3>
+              <span class="training-phase-tag">${this.currentLang === 'en' ? 'Phase 1: Component Training' : 'المرحلة 1: تدريب المكونات'}</span>
+              <h3 style="font-size:1.2rem; font-weight:800; color:var(--text-main);">${this.currentLang === 'en' ? 'Understand Core System Components' : 'فهم دور المكونات الأساسية للنظام'}</h3>
             </div>
             <div class="training-grid">
               ${activeChallenge.trainingComponents.map(comp => `
@@ -746,8 +767,8 @@ const App = {
           <!-- Stage 2: Hands-on Architecture Builder / Decisions -->
           <div class="decisions-section">
             <div class="training-title-row">
-              <span class="training-phase-tag" style="background:var(--color-warning-dim); color:var(--color-warning); border-color:var(--color-warning);">المرحلة 2: قرارات التصميم المعماري التفاعلي</span>
-              <h3 style="font-size:1.2rem; font-weight:800; color:var(--text-main);">صمم المعمارية باختيار القرارات الهندسية الصحيحة</h3>
+              <span class="training-phase-tag" style="background:var(--color-warning-dim); color:var(--color-warning); border-color:var(--color-warning);">${this.currentLang === 'en' ? 'Phase 2: Architectural Design Decisions' : 'المرحلة 2: قرارات التصميم المعماري التفاعلي'}</span>
+              <h3 style="font-size:1.2rem; font-weight:800; color:var(--text-main);">${this.currentLang === 'en' ? 'Architect the system by selecting optimal engineering decisions' : 'صمم المعمارية باختيار القرارات الهندسية الصحيحة'}</h3>
             </div>
 
             ${activeChallenge.questionsToSolve.map((q, stepIdx) => {
@@ -777,7 +798,7 @@ const App = {
 
                   ${hasSelected ? `
                     <div class="feedback-bubble show ${q.options[selectedOptIdx].correct ? 'correct' : 'wrong'}">
-                      <strong>${q.options[selectedOptIdx].correct ? '✓ اختيار صحيح ومثالي: ' : '✕ مفاضلة غير مناسبة: '}</strong>
+                      <strong>${q.options[selectedOptIdx].correct ? (this.currentLang === 'en' ? '✓ Optimal Choice: ' : '✓ اختيار صحيح ومثالي: ') : (this.currentLang === 'en' ? '✕ Sub-optimal Trade-off: ' : '✕ مفاضلة غير مناسبة: ')}</strong>
                       ${q.options[selectedOptIdx].reason}
                     </div>
                   ` : ''}
@@ -789,13 +810,13 @@ const App = {
           <!-- Stage 3: Golden Master Architecture Reveal -->
           <div class="studio-reveal-section">
             <div class="training-title-row" style="margin-bottom:1rem;">
-              <span class="training-phase-tag" style="background:var(--color-success-dim); color:var(--color-success); border-color:var(--color-success);">المرحلة 3: المخطط المعماري المعتمد</span>
-              <h3 style="font-size:1.2rem; font-weight:800; color:var(--text-main);">المعمارية الإنتاجية المعتمدة (Golden Reference Architecture)</h3>
+              <span class="training-phase-tag" style="background:var(--color-success-dim); color:var(--color-success); border-color:var(--color-success);">${this.currentLang === 'en' ? 'Phase 3: Production Reference Architecture' : 'المرحلة 3: المخطط المعماري المعتمد'}</span>
+              <h3 style="font-size:1.2rem; font-weight:800; color:var(--text-main);">${this.currentLang === 'en' ? 'Golden Reference Architecture' : 'المعمارية الإنتاجية المعتمدة (Golden Reference Architecture)'}</h3>
             </div>
 
             <div class="diagram-container-card" style="margin: 1rem 0;">
               <div class="diagram-header">
-                <span class="diagram-caption">مخطط الإنتاج الموزع: ${activeChallenge.appName}</span>
+                <span class="diagram-caption">${this.currentLang === 'en' ? 'Distributed Production Topology' : 'مخطط الإنتاج الموزع'}: ${activeChallenge.appName}</span>
               </div>
               ${SystemDesignDiagrams.render(activeChallenge.diagramId)}
             </div>
@@ -805,8 +826,8 @@ const App = {
           ${activeChallenge.databaseArchitecture || activeChallenge.databaseSchemas ? `
             <div class="schemas-section">
               <div class="training-title-row" style="margin-bottom:1rem;">
-                <span class="training-phase-tag" style="background:var(--color-primary-dim); color:var(--color-primary); border-color:var(--color-primary);">المرحلة 4: معمارية ومخططات قواعد البيانات</span>
-                <h3 style="font-size:1.2rem; font-weight:800; color:var(--text-main);">استراتيجية تخزين البيانات والـ Schemas والجداول التفصيلية</h3>
+                <span class="training-phase-tag" style="background:var(--color-primary-dim); color:var(--color-primary); border-color:var(--color-primary);">${this.currentLang === 'en' ? 'Phase 4: Database Architecture & Data Schemas' : 'المرحلة 4: معمارية ومخططات قواعد البيانات'}</span>
+                <h3 style="font-size:1.2rem; font-weight:800; color:var(--text-main);">${this.currentLang === 'en' ? 'Polyglot Storage Strategy, Schemas & Detailed Tables' : 'استراتيجية تخزين البيانات والـ Schemas والجداول التفصيلية'}</h3>
               </div>
 
               <!-- Polyglot Storage Strategy Overview -->
@@ -826,15 +847,15 @@ const App = {
                         </div>
                         <div class="db-tier-role">${tier.role}</div>
                         <div class="db-tier-meta">
-                          <div class="meta-row"><strong>التقسيم (Sharding Key):</strong> <code>${tier.shardingKey}</code></div>
-                          <div class="meta-row"><strong>نموذج التناسق:</strong> <span>${tier.consistency}</span></div>
+                          <div class="meta-row"><strong>${this.currentLang === 'en' ? 'Partitioning (Sharding Key):' : 'التقسيم (Sharding Key):'}</strong> <code>${tier.shardingKey}</code></div>
+                          <div class="meta-row"><strong>${this.currentLang === 'en' ? 'Consistency Model:' : 'نموذج التناسق:'}</strong> <span>${tier.consistency}</span></div>
                         </div>
                       </div>
                     `).join('')}
                   </div>
 
                   <div class="db-replication-note">
-                    <strong>استراتيجية التكرار والتوافرية العالية:</strong> ${activeChallenge.databaseArchitecture.replicationStrategy}
+                    <strong>${this.currentLang === 'en' ? 'Replication & High Availability Strategy:' : 'استراتيجية التكرار والتوافرية العالية:'}</strong> ${activeChallenge.databaseArchitecture.replicationStrategy}
                   </div>
                 </div>
               ` : ''}
@@ -842,7 +863,7 @@ const App = {
               <!-- Tables & Schemas List -->
               ${activeChallenge.databaseSchemas ? `
                 <div class="schemas-list-container">
-                  <h4 class="schemas-list-title">هياكل الجداول ومخططات الـ Schemas (${activeChallenge.databaseSchemas.length} هياكل معتمدة):</h4>
+                  <h4 class="schemas-list-title">${this.currentLang === 'en' ? `Table Schemas & Data Models (${activeChallenge.databaseSchemas.length} production models):` : `هياكل الجداول ومخططات الـ Schemas (${activeChallenge.databaseSchemas.length} هياكل معتمدة):`}</h4>
                   
                   ${activeChallenge.databaseSchemas.map((schema, sIdx) => `
                     <div class="schema-table-card">
@@ -852,7 +873,7 @@ const App = {
                           <span class="schema-table-name">${schema.tableName}</span>
                         </div>
                         <button class="ddl-toggle-btn" onclick="App.toggleSchemaDDL('${activeChallenge.id}', ${sIdx})">
-                          <span>عرض نص الـ DDL / الكود</span>
+                          <span>${this.currentLang === 'en' ? 'View DDL / Schema Code' : 'عرض نص الـ DDL / الكود'}</span>
                           <span class="ddl-arrow" id="ddl-arrow-${activeChallenge.id}-${sIdx}">▼</span>
                         </button>
                       </div>
@@ -864,11 +885,11 @@ const App = {
                         <table class="schema-data-table">
                           <thead>
                             <tr>
-                              <th style="width:23%;">الحقل (Column)</th>
-                              <th style="width:20%;">النوع (Data Type)</th>
-                              <th style="width:17%;">النوع المفتاحي (Key)</th>
+                              <th style="width:23%;">${this.currentLang === 'en' ? 'Column' : 'الحقل (Column)'}</th>
+                              <th style="width:20%;">${this.currentLang === 'en' ? 'Data Type' : 'النوع (Data Type)'}</th>
+                              <th style="width:17%;">${this.currentLang === 'en' ? 'Key' : 'النوع المفتاحي (Key)'}</th>
                               <th style="width:10%;">Nullable</th>
-                              <th style="width:30%;">الوظيفة والشرح المعماري</th>
+                              <th style="width:30%;">${this.currentLang === 'en' ? 'Architectural Description' : 'الوظيفة والشرح المعماري'}</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -906,8 +927,8 @@ const App = {
                       <!-- DDL Code Container (Collapsible) -->
                       <div class="schema-ddl-wrapper" id="ddl-box-${activeChallenge.id}-${sIdx}" style="display:none;">
                         <div class="ddl-header">
-                          <span>نص تعريف الجدول (DDL / Structure Definition)</span>
-                          <button class="ddl-copy-btn" onclick="App.copySnippetText(this, \`${encodeURIComponent(schema.ddl)}\`)">نسخ الكود</button>
+                          <span>${this.currentLang === 'en' ? 'DDL / Structure Definition' : 'نص تعريف الجدول (DDL / Structure Definition)'}</span>
+                          <button class="ddl-copy-btn" onclick="App.copySnippetText(this, \`${encodeURIComponent(schema.ddl)}\`)">${this.currentLang === 'en' ? 'Copy DDL' : 'نسخ الكود'}</button>
                         </div>
                         <pre class="ddl-pre"><code>${this.escapeHTML(schema.ddl)}</code></pre>
                       </div>
@@ -922,15 +943,15 @@ const App = {
           ${activeChallenge.dataExchange ? `
             <div class="exchange-section">
               <div class="training-title-row" style="margin-bottom:1rem;">
-                <span class="training-phase-tag" style="background:var(--color-orange-dim); color:var(--color-orange); border-color:var(--color-orange);">المرحلة 5: بروتوكولات ومسارات تبادل البيانات</span>
-                <h3 style="font-size:1.2rem; font-weight:800; color:var(--text-main);">بروتوكولات الاتصال وتدفق الطلب الشامل (Data Exchange & Protocols)</h3>
+                <span class="training-phase-tag" style="background:var(--color-orange-dim); color:var(--color-orange); border-color:var(--color-orange);">${this.currentLang === 'en' ? 'Phase 5: Communication Protocols & Data Exchange' : 'المرحلة 5: بروتوكولات ومسارات تبادل البيانات'}</span>
+                <h3 style="font-size:1.2rem; font-weight:800; color:var(--text-main);">${this.currentLang === 'en' ? 'Data Exchange & Protocols' : 'بروتوكولات الاتصال وتدفق الطلب الشامل (Data Exchange & Protocols)'}</h3>
               </div>
 
               <!-- Protocol Matrix -->
               <div class="protocol-matrix-card">
                 <div class="protocol-matrix-header">
-                  <h4 style="margin:0 0 0.5rem 0; font-size:1.05rem; font-weight:800; color:var(--text-main);">مصفوفة بروتوكولات الاتصال بين الطبقات (Communication Protocols Matrix)</h4>
-                  <p style="font-size:0.875rem; color:var(--text-muted); margin:0;">تحديد المعيار والبروتوكول الأنسب لكل طبقة لتحقيق أعلى أداء وأمان مطلوب.</p>
+                  <h4 style="margin:0 0 0.5rem 0; font-size:1.05rem; font-weight:800; color:var(--text-main);">${this.currentLang === 'en' ? 'Communication Protocols Matrix' : 'مصفوفة بروتوكولات الاتصال بين الطبقات (Communication Protocols Matrix)'}</h4>
+                  <p style="font-size:0.875rem; color:var(--text-muted); margin:0;">${this.currentLang === 'en' ? 'Selecting optimal transport standards per tier for maximum throughput and security.' : 'تحديد المعيار والبروتوكول الأنسب لكل طبقة لتحقيق أعلى أداء وأمان مطلوب.'}</p>
                 </div>
 
                 <div class="protocol-grid">
@@ -941,15 +962,15 @@ const App = {
                         <span class="protocol-pill">${p.protocol}</span>
                       </div>
                       <div class="protocol-meta-row">
-                        <span class="protocol-meta-key">هيكل البيانات:</span>
+                        <span class="protocol-meta-key">${this.currentLang === 'en' ? 'Data Format:' : 'هيكل البيانات:'}</span>
                         <code class="protocol-meta-val">${p.format}</code>
                       </div>
                       <div class="protocol-meta-row">
-                        <span class="protocol-meta-key">زمن الاستجابة المستهدف:</span>
+                        <span class="protocol-meta-key">${this.currentLang === 'en' ? 'Target Latency:' : 'زمن الاستجابة المستهدف:'}</span>
                         <span class="protocol-latency-val">${p.latencyTarget}</span>
                       </div>
                       <div class="protocol-rationale">
-                        <strong>لماذا تم اختياره؟</strong> ${p.rationale}
+                        <strong>${this.currentLang === 'en' ? 'Why was it chosen?' : 'لماذا تم اختياره؟'}</strong> ${p.rationale}
                       </div>
                     </div>
                   `).join('')}
@@ -965,7 +986,7 @@ const App = {
                       <h4 style="margin:0.25rem 0 0 0; font-size:1rem; font-weight:800; color:var(--text-main);">${activeChallenge.dataExchange.apiContractSample.title}</h4>
                       <span class="api-contract-method">${activeChallenge.dataExchange.apiContractSample.type}</span>
                     </div>
-                    <button class="ddl-copy-btn" onclick="App.copySnippetText(this, \`${encodeURIComponent(activeChallenge.dataExchange.apiContractSample.snippet)}\`)">نسخ العقد</button>
+                    <button class="ddl-copy-btn" onclick="App.copySnippetText(this, \`${encodeURIComponent(activeChallenge.dataExchange.apiContractSample.snippet)}\`)">${this.currentLang === 'en' ? 'Copy Contract' : 'نسخ العقد'}</button>
                   </div>
                   <pre class="contract-pre"><code>${this.escapeHTML(activeChallenge.dataExchange.apiContractSample.snippet)}</code></pre>
                 </div>
@@ -974,12 +995,12 @@ const App = {
               <!-- End-to-End Request Flow Steps -->
               <div class="e2e-flow-card">
                 <div class="e2e-flow-header">
-                  <h4 style="margin:0 0 0.5rem 0; font-size:1.05rem; font-weight:800; color:var(--text-main);">مسار تدفق البيانات والطلب خطوة بخطوة (End-to-End Request Lifecycle)</h4>
-                  <p style="font-size:0.875rem; color:var(--text-muted); margin:0;">تتبع كامل لرحلة البيانات من نقرة المستخدم على الهاتف حتى استقرارها بقواعد البيانات وشبكات الـ CDN.</p>
+                  <h4 style="margin:0 0 0.5rem 0; font-size:1.05rem; font-weight:800; color:var(--text-main);">${this.currentLang === 'en' ? 'End-to-End Request Lifecycle' : 'مسار تدفق البيانات والطلب خطوة بخطوة (End-to-End Request Lifecycle)'}</h4>
+                  <p style="font-size:0.875rem; color:var(--text-muted); margin:0;">${this.currentLang === 'en' ? 'End-to-end trace of request lifecycle from user tap to datastores and edge CDNs.' : 'تتبع كامل لرحلة البيانات من نقرة المستخدم على الهاتف حتى استقرارها بقواعد البيانات وشبكات الـ CDN.'}</p>
                 </div>
 
                 <div class="e2e-steps-timeline">
-                  ${activeChallenge.dataExchange.e2eRequestFlow.map(step => `
+                  ${(activeChallenge.dataExchange && activeChallenge.dataExchange.e2eRequestFlow ? activeChallenge.dataExchange.e2eRequestFlow : []).map(step => `
                     <div class="e2e-step-item">
                       <div class="step-num-badge">${step.stepNumber}</div>
                       <div class="step-content-box">
@@ -1003,14 +1024,14 @@ const App = {
         <div class="module-footer-nav">
           ${prevMod ? `
             <a href="#${prevMod.id}" class="nav-page-btn">
-              <span class="nav-page-label">← القسم السابق</span>
+              <span class="nav-page-label">${this.t('prevModule')}</span>
               <span class="nav-page-title">${prevMod.number}. ${prevMod.title.split('—')[0]}</span>
             </a>
           ` : `<div></div>`}
           
           <a href="#module-9" class="nav-page-btn" style="text-align: left;">
-            <span class="nav-page-label">القسم التالي →</span>
-            <span class="nav-page-title">9. مختبر الأكواد والتطبيق البرمجي</span>
+            <span class="nav-page-label">${this.t('nextModule')}</span>
+            <span class="nav-page-title">9. ${this.currentLang === 'en' ? 'Interactive Code Lab' : 'مختبر الأكواد والتطبيق البرمجي'}</span>
           </a>
         </div>
       </div>
@@ -1021,13 +1042,13 @@ const App = {
 
   selectStudioChallenge(challengeId) {
     this.activeStudioChallengeId = challengeId;
-    const mod = SystemDesignData.modules.find(m => m.id === 'module-8');
+    const mod = this.getData().modules.find(m => m.id === 'module-8');
     if (mod) this.renderModule(mod);
   },
 
   selectStudioOption(challengeId, stepIdx, optIdx) {
     this.studioAnswers[`${challengeId}-${stepIdx}`] = optIdx;
-    const mod = SystemDesignData.modules.find(m => m.id === 'module-8');
+    const mod = this.getData().modules.find(m => m.id === 'module-8');
     if (mod) this.renderModule(mod);
   },
 
@@ -1042,7 +1063,7 @@ const App = {
       <div class="content-wrapper">
         <!-- Code Lab Header -->
         <div class="module-header">
-          <span class="module-tag">القسم 9: مختبر الأكواد ومحاكي الخوارزميات</span>
+          <span class="module-tag">${this.currentLang === 'en' ? 'Module 9 of 10: Interactive Code Lab & Sandbox' : 'القسم 9: مختبر الأكواد ومحاكي الخوارزميات'}</span>
           <h1 class="module-title">${mod.title}</h1>
           <p class="module-subtitle">${mod.subtitle}</p>
         </div>
@@ -1077,25 +1098,25 @@ const App = {
           <div class="editor-card">
             <div class="panel-header-bar">
               <div class="panel-title-group">
-                <span>محرر الكود التفاعلي (Interactive JavaScript Editor)</span>
+                <span>${this.t('editorTitle')}</span>
                 <span class="brand-badge" style="font-family:var(--font-mono); font-size:0.7rem;">ES6+ Runtime</span>
               </div>
               <div class="panel-actions-group">
-                <button class="btn-editor-action" onclick="App.resetCurrentAlgoCode()" title="استعادة الكود الأصلي للخوارزمية">
-                  إعادة ضبط
+                <button class="btn-editor-action" onclick="App.resetCurrentAlgoCode()" title="${this.currentLang === 'en' ? 'Reset to initial algorithm code' : 'استعادة الكود الأصلي للخوارزمية'}">
+                  ${this.t('resetCode')}
                 </button>
-                <button class="btn-editor-action" id="copyCodeBtn" onclick="App.copyCodeToClipboard()" title="نسخ الكود">
-                  نسخ
+                <button class="btn-editor-action" id="copyCodeBtn" onclick="App.copyCodeToClipboard()" title="${this.currentLang === 'en' ? 'Copy code' : 'نسخ الكود'}">
+                  ${this.t('copyCode')}
                 </button>
-                <button class="btn-editor-action btn-run-code" onclick="App.runCodeSandbox()" title="تشغيل الكود (Ctrl + Enter)">
-                  تشغيل الكود (Run)
+                <button class="btn-editor-action btn-run-code" onclick="App.runCodeSandbox()" title="${this.currentLang === 'en' ? 'Run Code (Ctrl + Enter)' : 'تشغيل الكود (Ctrl + Enter)'}">
+                  ${this.t('runCode')}
                 </button>
               </div>
             </div>
 
             <div class="editor-body-wrapper">
               <div class="editor-gutter" id="editorGutter"></div>
-              <textarea id="codeLabTextarea" class="editor-code-textarea" spellcheck="false" placeholder="// اكتب أو عدل كود الخوارزمية هنا...">${initialCode}</textarea>
+              <textarea id="codeLabTextarea" class="editor-code-textarea" spellcheck="false" placeholder="${this.currentLang === 'en' ? '// Write or edit algorithm code here...' : '// اكتب أو عدل كود الخوارزمية هنا...'}">${initialCode}</textarea>
             </div>
           </div>
 
@@ -1103,18 +1124,18 @@ const App = {
           <div class="terminal-card">
             <div class="panel-header-bar">
               <div class="panel-title-group">
-                <span>نافذة المخرجات وسجلات التنفيذ (Execution Terminal)</span>
-                <span class="execution-status-badge status-ready" id="executionStatusBadge">جاهز للتشغيل</span>
+                <span>${this.t('terminalTitle')}</span>
+                <span class="execution-status-badge status-ready" id="executionStatusBadge">${this.t('statusReady')}</span>
               </div>
               <div class="panel-actions-group">
-                <button class="btn-editor-action" onclick="App.clearConsoleOutput()" title="مسح سجلات الشاشة">
-                  مسح الشاشة
+                <button class="btn-editor-action" onclick="App.clearConsoleOutput()" title="${this.currentLang === 'en' ? 'Clear console screen' : 'مسح سجلات الشاشة'}">
+                  ${this.t('clearTerminal')}
                 </button>
               </div>
             </div>
 
             <div class="terminal-body" id="terminalOutputBody">
-              <div class="terminal-log-row log-info">// اضغط على زر "تشغيل الكود (Run)" أو (Ctrl + Enter) لتشغيل الخوارزمية وملاحظة النتائج اللحظية...</div>
+              <div class="terminal-log-row log-info">${this.t('runPrompt')}</div>
             </div>
           </div>
         </div>
@@ -1123,20 +1144,20 @@ const App = {
         <div class="module-footer-nav">
           ${prevMod ? `
             <a href="#${prevMod.id}" class="nav-page-btn">
-              <span class="nav-page-label">← القسم السابق</span>
+              <span class="nav-page-label">${this.t('prevModule')}</span>
               <span class="nav-page-title">${prevMod.number}. ${prevMod.title.split('—')[0]}</span>
             </a>
           ` : `<div></div>`}
           
           ${nextMod ? `
             <a href="#${nextMod.id}" class="nav-page-btn" style="text-align: left;">
-              <span class="nav-page-label">القسم التالي →</span>
+              <span class="nav-page-label">${this.t('nextModule')}</span>
               <span class="nav-page-title">${nextMod.number}. ${nextMod.title.split('—')[0]}</span>
             </a>
           ` : `
             <a href="#module-10" class="nav-page-btn" style="text-align: left;">
-              <span class="nav-page-label">القسم التالي →</span>
-              <span class="nav-page-title">10. بنك أسئلة المقابلات</span>
+              <span class="nav-page-label">${this.t('nextModule')}</span>
+              <span class="nav-page-title">10. ${this.currentLang === 'en' ? 'Interview Bank' : 'بنك أسئلة المقابلات'}</span>
             </a>
           `}
         </div>
@@ -1155,7 +1176,7 @@ const App = {
 
   selectAlgorithm(algoId) {
     this.activeAlgoId = algoId;
-    const mod = SystemDesignData.modules.find(m => m.id === 'module-9');
+    const mod = this.getData().modules.find(m => m.id === 'module-9');
     if (mod) this.renderModule(mod);
   },
 
@@ -1260,7 +1281,7 @@ const App = {
 
     // Render Logs in Terminal with Color Coding
     if (logs.length === 0) {
-      terminal.innerHTML = `<div class="terminal-log-row log-info">// تم تشغيل الكود بنجاح دون طباعة مخرجات. استخدم console.log() لعرض النتائج.</div>`;
+      terminal.innerHTML = `<div class="terminal-log-row log-info">${this.currentLang === 'en' ? '// Code executed successfully with no output. Use console.log() to print results.' : '// تم تشغيل الكود بنجاح دون طباعة مخرجات. استخدم console.log() لعرض النتائج.'}</div>`;
     } else {
       let outputHtml = '';
       logs.forEach(log => {
@@ -1290,7 +1311,7 @@ const App = {
   },
 
   resetCurrentAlgoCode() {
-    const mod = SystemDesignData.modules.find(m => m.id === 'module-9');
+    const mod = this.getData().modules.find(m => m.id === 'module-9');
     if (!mod) return;
     const algo = mod.algorithms.find(a => a.id === this.activeAlgoId);
     if (!algo) return;
@@ -1316,7 +1337,7 @@ const App = {
     navigator.clipboard.writeText(textarea.value).then(() => {
       if (btn) {
         const orig = btn.innerHTML;
-        btn.innerHTML = '✓ تم النسخ!';
+        btn.innerHTML = this.currentLang === 'en' ? '✓ Copied!' : '✓ تم النسخ!';
         btn.style.color = 'var(--color-success)';
         setTimeout(() => {
           btn.innerHTML = orig;
@@ -1343,13 +1364,13 @@ const App = {
   // ==========================================================================
   setQuizDifficultyFilter(difficulty) {
     this.activeQuizDifficultyFilter = difficulty;
-    const mod = SystemDesignData.modules.find(m => m.id === 'module-10');
+    const mod = this.getData().modules.find(m => m.id === 'module-10');
     if (mod) this.renderModule(mod);
   },
 
   setQuizCategoryFilter(category) {
     this.activeQuizCategoryFilter = category;
-    const mod = SystemDesignData.modules.find(m => m.id === 'module-10');
+    const mod = this.getData().modules.find(m => m.id === 'module-10');
     if (mod) this.renderModule(mod);
   },
 
@@ -1378,7 +1399,7 @@ const App = {
   },
 
   toggleAllQuizAnswers(open) {
-    const questions = typeof InterviewQuestionsData !== 'undefined' ? InterviewQuestionsData : [];
+    const questions = this.getInterviewQuestions();
     questions.forEach(q => {
       if (open) {
         this.openAnswers.add(q.id);
@@ -1450,7 +1471,7 @@ const App = {
   },
 
   renderInterviewQuestionsModule(mod, container, isRead, prevMod, nextMod) {
-    const allQuestions = typeof InterviewQuestionsData !== 'undefined' ? InterviewQuestionsData : [];
+    const allQuestions = this.getInterviewQuestions();
     
     // Filter questions by category and difficulty
     const diffFilter = this.activeQuizDifficultyFilter;
@@ -1766,7 +1787,7 @@ const App = {
       html += `
         <div class="diagram-container-card" style="margin: 1rem 0;">
           <div class="diagram-header">
-            <span class="diagram-caption">معمارية النظام: ${prob.title.split('—')[0]}</span>
+            <span class="diagram-caption">${this.currentLang === 'en' ? 'System Architecture' : 'معمارية النظام'}: ${prob.title.split('—')[0]}</span>
           </div>
           ${SystemDesignDiagrams.render(prob.diagramId)}
         </div>
@@ -1950,7 +1971,9 @@ const App = {
 
     const hits = [];
 
-    SystemDesignData.modules.forEach(mod => {
+    const data = this.getData();
+    const iqData = this.getInterviewQuestions();
+    data.modules.forEach(mod => {
       // Match module
       if (mod.title.toLowerCase().includes(q) || mod.subtitle.toLowerCase().includes(q)) {
         hits.push({
@@ -1990,7 +2013,7 @@ const App = {
           const schemaMatch = c.databaseSchemas && c.databaseSchemas.some(s => s.tableName.toLowerCase().includes(q) || s.description.toLowerCase().includes(q));
           if (c.appName.toLowerCase().includes(q) || c.overview.toLowerCase().includes(q) || c.tag.toLowerCase().includes(q) || schemaMatch) {
             hits.push({
-              title: `المختبر العملي: ${c.appName}`,
+              title: `${this.currentLang === 'en' ? 'Studio' : 'المختبر العملي'}: ${c.appName}`,
               snippet: `${c.tag} — ${c.overview.substring(0, 140)}...`,
               link: `#${c.id}`
             });
@@ -2003,7 +2026,7 @@ const App = {
         mod.algorithms.forEach(a => {
           if (a.name.toLowerCase().includes(q) || a.description.toLowerCase().includes(q) || a.category.toLowerCase().includes(q)) {
             hits.push({
-              title: `مختبر الأكواد: ${a.name}`,
+              title: `${this.currentLang === 'en' ? 'Code Lab' : 'مختبر الأكواد'}: ${a.name}`,
               snippet: `${a.category} — ${a.description.substring(0, 140)}...`,
               link: `#${a.id}`
             });
@@ -2012,8 +2035,8 @@ const App = {
       }
 
       // Match Interview Questions
-      if (mod.isInterviewQuestions && typeof InterviewQuestionsData !== 'undefined') {
-        InterviewQuestionsData.forEach(item => {
+      if (mod.isInterviewQuestions) {
+        iqData.forEach(item => {
           const matchTitle = item.title.toLowerCase().includes(q) || item.titleEn.toLowerCase().includes(q);
           const matchQ = item.question.toLowerCase().includes(q);
           const matchCat = item.category.toLowerCase().includes(q) || item.categoryAr.toLowerCase().includes(q);
@@ -2021,7 +2044,7 @@ const App = {
 
           if (matchTitle || matchQ || matchCat || matchKw) {
             hits.push({
-              title: `سؤال مقابلة (${item.difficultyLabel}): ${item.title}`,
+              title: `${this.currentLang === 'en' ? 'Interview Question' : 'سؤال مقابلة'} (${item.difficultyLabel}): ${item.title}`,
               snippet: `${item.categoryAr} — ${item.question.substring(0, 140)}...`,
               link: `#${item.id}`
             });
