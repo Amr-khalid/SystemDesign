@@ -308,6 +308,55 @@ const SystemDesignDataEn = {
           ]
         }
       }
+    },
+    {
+      "id": "module-3",
+      "number": "3",
+      "title": "Question Breakdowns — 31 Real-World Architectural Case Studies",
+      "subtitle": "Comprehensive architectural deconstruction of 31 real-world systems from FAANG / Big Tech from foundations to Staff+ level",
+      "problems": [
+        {
+          "id": "prob-3-1",
+          "number": "3.1",
+          "title": "URL Shortener — Bitly / TinyURL",
+          "category": "Storage & Key Generation",
+          "diagramId": "bitlyArchitecture",
+          "calculations": "• 100M new URLs generated monthly (~38 write QPS)\n• 100:1 Read-to-Write ratio (~3,800 read QPS)\n• 5-Year Storage: 6 Billion URLs * 500 bytes ≈ 3 TB total disk.",
+          "l1": "Generate a 7-character short token using Base62 encoding ([0-9, a-z, A-Z]), yielding 62^7 = 3.5 trillion unique keys. Store mappings in an RDBMS (id, short_url, original_url, created_at) with a B-tree index on short_url.",
+          "l2": "Introduce an in-memory Key Generation Service (KGS) that pre-computes unique sequential keys in memory to dispense in O(1) without DB collisions. Cache viral/hot URLs in Redis Cluster (80/20 Pareto rule). Return HTTP 301 for permanent redirect caching or HTTP 302 to track click telemetry.",
+          "l3": "Partition database using hash(short_key) % N. Inspect URLs against Google Safe Browsing API to prevent phishing. Deploy edge CDN caching for high-traffic links and publish asynchronous click analytics to Apache Kafka -> ClickHouse for real-time reporting."
+        },
+        {
+          "id": "prob-3-2",
+          "number": "3.2",
+          "title": "Cloud Storage & File Synchronization — Dropbox / Google Drive",
+          "category": "Large Blob Storage & Sync",
+          "calculations": "• 500M total users, 100M daily active users, average file size 2MB.\n• Total Storage: 50PB raw storage with 3x replication factor.",
+          "l1": "Decouple metadata storage (MySQL / PostgreSQL for file namespaces, directory trees, ownership) from raw binary file blobs stored in Amazon S3 / Object Storage. Split files into 4MB chunks and hash via SHA-256 for chunk-level deduplication.",
+          "l2": "Deploy an intelligent Desktop/Mobile Sync Client that monitors filesystem events and applies rolling-hash algorithms (Rsync delta sync) to upload only modified byte ranges. Maintain WebSocket / Long-polling connections to fan out immediate file modification notifications to other user devices.",
+          "l3": "Implement deterministic concurrency conflict resolution creating conflicted copy branches. Apply client-side zero-knowledge encryption before chunk transmission, and execute cross-user global deduplication to conserve petabytes of storage."
+        },
+        {
+          "id": "prob-3-3",
+          "number": "3.3",
+          "title": "On-Demand Delivery & Matching Engine — DoorDash / Instacart",
+          "category": "Geospatial & Batch Dispatch",
+          "calculations": "• 1M orders placed daily (12 average QPS, 100 peak order QPS).\n• 100,000 active delivery couriers updating location every 4s = 25,000 location QPS.",
+          "l1": "Manage stateful order lifecycle: Order Created -> Restaurant Accepted -> Driver Assigned -> Picked Up -> In Transit -> Delivered. Persist status in relational database with basic bounding-box spatial coordinates.",
+          "l2": "Implement a Batch Dispatch Engine: Group incoming orders into 30-second time windows and execute the Hungarian / Weighted Bipartite Matching algorithm to minimize courier wait times and trip variance. Ingest driver location updates every 4s directly into Redis Geospatial (GEOADD / GEORADIUS).",
+          "l3": "Calculate multi-variable dynamic ETAs via machine learning models (kitchen prep duration + driver arrival time + live street traffic). Handle driver drops/rejections automatically by rescheduling the dispatch pipeline with highest priority without re-triggering kitchen cooking."
+        },
+        {
+          "id": "prob-3-4",
+          "number": "3.4",
+          "title": "High-Concurrency Ticket Booking — Ticketmaster",
+          "category": "High Concurrency & Flash Sales",
+          "calculations": "• Flash Sales: 100,000 concert tickets sell out in 60 seconds with 1,000,000 concurrent buyers.\n• Temporary reservation hold duration: 10 minutes during checkout.",
+          "l1": "Model seat inventory in a relational database using Optimistic Concurrency Control (version column) to prevent double-booking the same seat.",
+          "l2": "Deploy a Virtual Waiting Room (Cloudflare Waiting Room / AWS SQS Token Bucket) to throttle traffic surges, admitting buyers at a controlled rate matching downstream database capacity. Hold temporary 10-minute seat reservations in Redis with TTL expiration.",
+          "l3": "Execute distributed reservations using atomic Redis Lua scripts to verify availability and deduct inventory in O(1) in memory. Propagate confirmed checkouts asynchronously to PostgreSQL via Kafka, with transactional rollback returning abandoned seats back to the available pool."
+        }
+      ]
     }
   ]
 };
