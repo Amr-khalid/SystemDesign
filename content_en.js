@@ -475,6 +475,56 @@ const SystemDesignDataEn = {
           "l1": "Basic Fixed Window counter in database: Count requests per minute bucket. (Suffers from edge burst vulnerability allowing 2x limit at window boundaries).",
           "l2": "Implement Token Bucket or Sliding Window Log in Redis. Sliding Window Log records timestamped sorted sets (ZSET), trimming entries older than window size and checking set cardinality.",
           "l3": "Adopt Sliding Window Counter combining current and previous bucket weights in memory for O(1) space and CPU. Synchronize local edge proxy counters asynchronously using Redis cluster or local memory batches to minimize Redis round-trip latency."
+        },
+        {
+          "id": "prob-3-17",
+          "number": "3.17",
+          "title": "Navigation & Real-Time Traffic Routing — Google Maps",
+          "category": "Graph Partitioning & Shortest Path",
+          "calculations": "• Global road network with 1 Billion intersections (nodes) and 2 Billion road segments (edges).",
+          "l1": "Model road network as a directed weighted graph. Calculate shortest path using Dijkstra's algorithm or A* with Euclidean distance heuristic.",
+          "l2": "Partition global graph into hierarchical geographic cells. Pre-compute Contraction Hierarchies to compress long-distance highway traversal, reducing route calculation time from seconds to milliseconds.",
+          "l3": "Ingest live traffic speeds from millions of active mobile devices into Apache Flink. Dynamically adjust road segment weight costs in real time and push live rerouting suggestions to drivers."
+        },
+        {
+          "id": "prob-3-18",
+          "number": "3.18",
+          "title": "Video Conferencing Platform — Zoom / Google Meet",
+          "category": "WebRTC & Media SFU",
+          "calculations": "• 300M daily meeting participants, 1,000 attendees per large meeting with P99 audio latency < 150ms.",
+          "l1": "Peer-to-Peer WebRTC mesh connections for 2-3 participants. (Fails at larger scale due to N*(N-1) uplink upload bandwidth explosion).",
+          "l2": "Deploy Selective Forwarding Units (SFUs): Clients upload a single media stream to the SFU server, which selectively forwards packets to all other participants without re-encoding.",
+          "l3": "Implement Simulcast / Scalable Video Coding (SVC) allowing clients to send high, medium, and low quality layers. SFU routes appropriate layers based on attendee network conditions and screen layout."
+        },
+        {
+          "id": "prob-3-19",
+          "number": "3.19",
+          "title": "Payment Processing Platform — Stripe",
+          "category": "Idempotency & Double-Entry Ledger",
+          "calculations": "• $1 Trillion annual payment volume, 10,000 transactions/second, zero tolerance for double charging.",
+          "l1": "Accept card details, make HTTP request to acquiring bank, and write transaction record to MySQL database.",
+          "l2": "Enforce strict API Idempotency: Require unique client idempotency keys stored in Redis with atomic locks. If a retry occurs with the same key, return cached original response without re-executing payment.",
+          "l3": "Implement an Immutable Double-Entry Ledger on partitioned PostgreSQL. Coordinate multi-party money movement via Saga Orchestration, persisting all state transitions before invoking external card networks."
+        },
+        {
+          "id": "prob-3-20",
+          "number": "3.20",
+          "title": "Metrics & Distributed Telemetry — Datadog / Prometheus",
+          "category": "Time-Series Datastores (TSDB)",
+          "calculations": "• 10M server instances emitting 100 metrics every 10s = 100M data points/sec.",
+          "l1": "Store time-series tuples (metric_name, timestamp, value, labels) in relational database with index on (metric_name, timestamp).",
+          "l2": "Adopt Gorilla Time-Series Compression: XOR floating-point values and Delta-of-Delta timestamp compression, reducing storage footprint from 16 bytes to 1.37 bytes per metric point.",
+          "l3": "Implement multi-tier downsampling: Retain raw 10-second data for 7 days, downsample to 1-minute averages for 30 days, and 1-hour averages for 1 year in columnar object storage (Parquet on S3)."
+        },
+        {
+          "id": "prob-3-21",
+          "number": "3.21",
+          "title": "Distributed Unique ID Generator — Twitter Snowflake",
+          "category": "Monotonic ID Generation",
+          "calculations": "• Generate 100,000 unique 64-bit strictly monotonic IDs per second across distributed nodes.",
+          "l1": "Use database auto-increment ID column or multi-master auto-increment offsets (step = N). (Suffers from single-point bottlenecks and lack of global sorting).",
+          "l2": "Implement Twitter Snowflake 64-bit ID layout: 1 bit unused, 41 bits millisecond timestamp (69 years lifetime), 10 bits worker/datacenter machine ID (1024 nodes), 12 bits sequence number (4096 IDs/ms per node).",
+          "l3": "Handle NTP Clock Drift safely: If system clock moves backward, buffer requests or sleep until clock catches up. Deploy as lightweight sidecar daemon providing sub-millisecond local generation."
         }
       ]
     }
