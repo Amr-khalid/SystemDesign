@@ -1047,6 +1047,1365 @@ const SystemDesignDataEn = {
           ]
         }
       }
+    },
+    {
+      "id": "module-8",
+      "number": "8",
+      "title": "Interactive Studio — Architectural Design Simulator",
+      "subtitle": "Hands-on architectural workbench: design production systems (InstaPay, Netflix, WhatsApp) with instant feedback, polyglot schemas, protocols, and code",
+      "isStudio": true,
+      "diagramId": "instapayArchitecture",
+      "studioChallenges": [
+        {
+          "id": "challenge-instapay",
+          "appName": "InstaPay (Instant Payment Network)",
+          "tag": "Financial / Strong Consistency",
+          "badge": "ACID & Saga",
+          "diagramId": "instapayArchitecture",
+          "overview": "Architecting a National Instant Payment Network (IPN) connecting retail banks for instant peer-to-peer fund transfers with strict zero-loss and zero-duplicate guarantees under network partitions.",
+          "targetSpecs": {
+            "throughput": "50,000 tx/sec",
+            "latency": "< 3s End-to-End",
+            "consistency": "Strict ACID / Zero Data Loss",
+            "availability": "99.999% (Five Nines)"
+          },
+          "trainingComponents": [
+            {
+              "name": "Idempotency Lock Layer",
+              "role": "Redis Cluster running Lua scripts to evaluate unique transaction idempotency keys, eliminating duplicate charge requests."
+            },
+            {
+              "name": "Saga State Machine",
+              "role": "Distributed transaction orchestrator coordinating: reserve sender funds -> invoke central bank switch -> confirm recipient credit."
+            },
+            {
+              "name": "Double-Entry Ledger",
+              "role": "PostgreSQL database recording every balance mutation as dual offsetting debit and credit entries to ensure mathematical balance."
+            },
+            {
+              "name": "Central Bank IPN Connector",
+              "role": "Secure gateway maintaining encrypted mTLS tunnels and Hardware Security Modules (HSM) to interface with the central bank switch."
+            },
+            {
+              "name": "Nightly Reconciliation Engine",
+              "role": "Batch reconciliation engine matching internal ledger records against external central bank settlement clearing files."
+            }
+          ],
+          "questionsToSolve": [
+            {
+              "step": "1. Idempotency & Duplicate Request Mitigation",
+              "options": [
+                {
+                  "text": "Rely solely on auto-increment IDs in the relational database",
+                  "correct": false,
+                  "reason": "Fails to prevent mobile clients from re-submitting identical transfer requests when network connections drop."
+                },
+                {
+                  "text": "Require client-generated UUID v4 Idempotency Key verified atomically in Redis via Lua script",
+                  "correct": true,
+                  "reason": "Excellent! Guarantees that retries with the same key return the original cached response without re-executing money movement."
+                }
+              ]
+            },
+            {
+              "step": "2. Inter-Bank Distributed Transaction Coordination",
+              "options": [
+                {
+                  "text": "Two-Phase Commit (2PC) holding locks across all commercial bank databases",
+                  "correct": false,
+                  "reason": "2PC locks resources across bank networks; if one bank lags, the entire payment network freezes."
+                },
+                {
+                  "text": "Saga Pattern with Orchestration and automated compensating rollback transactions",
+                  "correct": true,
+                  "reason": "Optimal! Decouples bank operations into discrete steps with automated compensating refunds on timeout."
+                }
+              ]
+            },
+            {
+              "step": "3. Financial Auditability & Ledger Reliability",
+              "options": [
+                {
+                  "text": "Direct UPDATE queries: `UPDATE accounts SET balance = balance - amount`",
+                  "correct": false,
+                  "reason": "Overwrites historical state; leaves no tamper-evident audit trail if discrepancies arise."
+                },
+                {
+                  "text": "Immutable Double-Entry Ledger with debit and credit journal entries",
+                  "correct": true,
+                  "reason": "Industry Standard! Every transaction logs balanced debit and credit entries, guaranteeing mathematically provable audits."
+                }
+              ]
+            }
+          ],
+          "databaseArchitecture": {
+            "overview": "Polyglot storage architecture isolating high-throughput volatile locking from immutable financial ledger tables and analytics.",
+            "polyglotTiers": [
+              {
+                "dbName": "PostgreSQL (Core Ledger)",
+                "dbType": "Relational RDBMS (ACID)",
+                "role": "Immutable double-entry ledger, accounts, and transaction state.",
+                "shardingKey": "bank_routing_code + hash(account_id)",
+                "consistency": "Strict Serializable / Multi-AZ Sync"
+              },
+              {
+                "dbName": "Redis Cluster (Distributed Locks)",
+                "dbType": "In-Memory Key-Value",
+                "role": "Atomic idempotency locks and fast session auth validation.",
+                "shardingKey": "idempotency_key",
+                "consistency": "Strong In-Memory Lock (TTL = 24h)"
+              },
+              {
+                "dbName": "ClickHouse / TimescaleDB",
+                "dbType": "Columnar OLAP",
+                "role": "Audit logs and nightly inter-bank clearing reconciliation.",
+                "shardingKey": "partition by toYYYYMM(created_at)",
+                "consistency": "Append-only Immutable"
+              }
+            ],
+            "replicationStrategy": "Multi-AZ Synchronous Replication with RPO = 0 (Zero Data Loss) and automated failover via Raft/Patroni in under 3 seconds."
+          },
+          "databaseSchemas": [
+            {
+              "tableName": "accounts",
+              "engine": "PostgreSQL (ACID Core)",
+              "description": "User bank accounts with optimistic locking to prevent race conditions.",
+              "columns": [
+                {
+                  "name": "account_id",
+                  "type": "UUID",
+                  "key": "PK",
+                  "nullable": false,
+                  "description": "Unique bank account identifier."
+                },
+                {
+                  "name": "user_id",
+                  "type": "UUID",
+                  "key": "FK",
+                  "nullable": false,
+                  "description": "Owner user identifier."
+                },
+                {
+                  "name": "bank_code",
+                  "type": "VARCHAR(10)",
+                  "key": "INDEX",
+                  "nullable": false,
+                  "description": "Bank routing identifier (e.g. NBE, CIB)."
+                },
+                {
+                  "name": "iban",
+                  "type": "VARCHAR(34)",
+                  "key": "UNIQUE",
+                  "nullable": false,
+                  "description": "International Bank Account Number (IBAN)."
+                },
+                {
+                  "name": "currency",
+                  "type": "CHAR(3)",
+                  "key": "NONE",
+                  "nullable": false,
+                  "description": "Account currency (EGP, USD, SAR)."
+                },
+                {
+                  "name": "balance_cents",
+                  "type": "BIGINT",
+                  "key": "NONE",
+                  "nullable": false,
+                  "description": "Current balance in smallest currency units (cents)."
+                },
+                {
+                  "name": "held_cents",
+                  "type": "BIGINT",
+                  "key": "NONE",
+                  "nullable": false,
+                  "description": "Active in-flight reserved funds."
+                },
+                {
+                  "name": "status",
+                  "type": "VARCHAR(15)",
+                  "key": "NONE",
+                  "nullable": false,
+                  "description": "Account status (ACTIVE, SUSPENDED, FROZEN)."
+                },
+                {
+                  "name": "version",
+                  "type": "BIGINT",
+                  "key": "LOCK",
+                  "nullable": false,
+                  "description": "Optimistic concurrency control version number."
+                },
+                {
+                  "name": "created_at",
+                  "type": "TIMESTAMPTZ",
+                  "key": "NONE",
+                  "nullable": false,
+                  "description": "Account creation timestamp."
+                }
+              ],
+              "ddl": "CREATE TABLE accounts (\n  account_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n  user_id UUID NOT NULL REFERENCES users(user_id),\n  bank_code VARCHAR(10) NOT NULL,\n  iban VARCHAR(34) UNIQUE NOT NULL,\n  currency CHAR(3) NOT NULL DEFAULT 'EGP',\n  balance_cents BIGINT NOT NULL CHECK (balance_cents >= 0),\n  held_cents BIGINT NOT NULL DEFAULT 0 CHECK (held_cents >= 0),\n  status VARCHAR(15) NOT NULL DEFAULT 'ACTIVE',\n  version BIGINT NOT NULL DEFAULT 1,\n  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()\n);\nCREATE INDEX idx_accounts_bank_user ON accounts(bank_code, user_id);"
+            }
+          ],
+          "dataExchange": {
+            "protocolMatrix": [
+              {
+                "layer": "Mobile App ↔ API Gateway",
+                "protocol": "HTTPS / TLS 1.3 + mTLS",
+                "format": "Signed JSON + Biometric HSM Token",
+                "latencyTarget": "< 150ms",
+                "rationale": "Strict mutual authentication with cryptographic signing to protect customer funds."
+              },
+              {
+                "layer": "API Gateway ↔ Saga Orchestrator",
+                "protocol": "gRPC over HTTP/2",
+                "format": "Protobuf Binary",
+                "latencyTarget": "< 10ms",
+                "rationale": "High-throughput binary multiplexing with minimal payload overhead."
+              },
+              {
+                "layer": "Saga ↔ Central Bank IPN Hub",
+                "protocol": "ISO 20022 (AS2 / IPSec VPN)",
+                "format": "XML (pacs.008 / pacs.002)",
+                "latencyTarget": "< 1500ms",
+                "rationale": "Global banking telecommunications standard for inter-bank clearing."
+              },
+              {
+                "layer": "Saga ↔ Async Event Backbone",
+                "protocol": "Apache Kafka",
+                "format": "Avro with Schema Registry",
+                "latencyTarget": "< 25ms",
+                "rationale": "Event streaming for audit trails, notifications, and reconciliation."
+              }
+            ],
+            "apiContractSample": {
+              "title": "Instant Transfer Initiation API Contract",
+              "type": "POST /v1/transfers (JSON + mTLS Header)",
+              "snippet": "{\n  \"headers\": {\n    \"X-Idempotency-Key\": \"9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d\",\n    \"X-Biometric-Signature\": \"MEQCIF98...h298sX=\",\n    \"X-Device-Fingerprint\": \"sha256:d89a2e4...\"\n  },\n  \"body\": {\n    \"source_account_id\": \"acc_8921034-egp\",\n    \"destination_type\": \"IBAN\",\n    \"destination_value\": \"EG38000200010000002891029384\",\n    \"beneficiary_bank\": \"CIB_EG\",\n    \"amount_cents\": 500000,\n    \"currency\": \"EGP\",\n    \"note\": \"Payment for software license\"\n  }\n}"
+            },
+            "e2eRequestFlow": [
+              {
+                "stepNumber": 1,
+                "actor": "User App",
+                "action": "Biometric Transfer Signing & Idempotency Key Generation",
+                "component": "Mobile Client",
+                "protocol": "mTLS / TLS 1.3",
+                "detail": "Client generates UUID v4 idempotency key and signs the payload using keys stored in device Secure Enclave."
+              },
+              {
+                "stepNumber": 2,
+                "actor": "API Gateway",
+                "action": "Atomic Idempotency Lock Acquisition",
+                "component": "Envoy / Redis Cluster",
+                "protocol": "gRPC / Lua",
+                "detail": "Verifies JWT token and acquires atomic distributed lock in Redis to reject duplicate retries."
+              },
+              {
+                "stepNumber": 3,
+                "actor": "Saga Orchestrator",
+                "action": "Debit Account Reservation & Hold",
+                "component": "Saga Engine / PostgreSQL",
+                "protocol": "SQL Transaction",
+                "detail": "Moves funds from balance_cents to held_cents within an optimistic lock transaction."
+              },
+              {
+                "stepNumber": 4,
+                "actor": "Central Bank Gateway",
+                "action": "Inter-Bank Clearing Message Transmission",
+                "component": "IPN Switch",
+                "protocol": "ISO 20022",
+                "detail": "Transmits pacs.008 credit transfer message over encrypted IPSec tunnel to receiving bank."
+              },
+              {
+                "stepNumber": 5,
+                "actor": "Double-Entry Ledger",
+                "action": "Immutable Balanced Entry Recording",
+                "component": "Ledger Service",
+                "protocol": "Kafka Event",
+                "detail": "Commits matching debit and credit journal lines, settling transfer in sub-3 seconds."
+              }
+            ]
+          }
+        },
+        {
+          "id": "challenge-uber",
+          "appName": "Uber / Careem (Ride Hailing & Spatial Matching)",
+          "tag": "Geospatial / Ultra-High Ingress",
+          "badge": "Uber H3 & Redis Cluster",
+          "diagramId": "uberArchitecture",
+          "overview": "Architecting an ultra-scale ride-hailing and matching engine ingesting 1.25 Million location updates per second, providing sub-100ms nearby driver discovery and dynamic matching.",
+          "targetSpecs": {
+            "throughput": "1.25M location pings/sec",
+            "latency": "< 100ms Matching",
+            "consistency": "Eventual (Locations) / Strict (Match Lock)",
+            "availability": "99.999% High Availability"
+          },
+          "trainingComponents": [
+            {
+              "name": "Spatial Ingestion Gateway",
+              "role": "High-throughput Netty / Go gateway absorbing continuous UDP/WebSocket driver GPS location telemetry."
+            },
+            {
+              "name": "Uber H3 Hexagonal Grid Index",
+              "role": "Hierarchical spatial indexing mapping coordinates to Resolution 8 hexagons (radius ~460m) for O(1) neighbor radius queries."
+            },
+            {
+              "name": "In-Memory Geospatial Cluster",
+              "role": "Redis Cluster maintaining transient driver positions purely in memory to protect disks from 1.25M writes/sec."
+            },
+            {
+              "name": "Dynamic Dispatch & Lock Engine",
+              "role": "Matching engine executing distributed mutex locks (Redlock) to prevent dispatching one driver to two riders."
+            }
+          ],
+          "questionsToSolve": [
+            {
+              "step": "1. Ingesting 1.25M Location Pings per Second",
+              "options": [
+                {
+                  "text": "Execute synchronous SQL UPDATE queries with PostGIS",
+                  "correct": false,
+                  "reason": "Disk I/O and replication lag collapse the database under 1.25M writes/second."
+                },
+                {
+                  "text": "Ingest location telemetry into an in-memory Redis Geospatial cluster partitioned by H3 cell ID",
+                  "correct": true,
+                  "reason": "Optimal! Keeps volatile coordinates in memory, updating spatial sets in O(log N) without disk thrashing."
+                }
+              ]
+            },
+            {
+              "step": "2. Preventing Dual-Matching Race Conditions",
+              "options": [
+                {
+                  "text": "Broadcast trip offer to all nearby drivers simultaneously; first to accept wins",
+                  "correct": false,
+                  "reason": "Causes user frustration and high server load from simultaneous conflicting accepts."
+                },
+                {
+                  "text": "Acquire 10-second temporary atomic lock on the target driver via Redis Mutex before offering ride",
+                  "correct": true,
+                  "reason": "Standard! Guarantees the driver is reserved exclusively for this trip offer during the decision window."
+                }
+              ]
+            }
+          ],
+          "databaseArchitecture": {
+            "overview": "Decoupled memory and persistent storage separating ephemeral location tracking from persistent ride contracts.",
+            "polyglotTiers": [
+              {
+                "dbName": "Redis Geospatial Cluster",
+                "dbType": "In-Memory Key-Value",
+                "role": "Live driver positions and H3 spatial neighborhood indexes.",
+                "shardingKey": "h3_cell_res8",
+                "consistency": "Volatile In-Memory"
+              },
+              {
+                "dbName": "PostgreSQL (Citus)",
+                "dbType": "Sharded RDBMS",
+                "role": "Trip records, fares, payment receipts, and billing ledgers.",
+                "shardingKey": "city_id + trip_id",
+                "consistency": "Strict ACID"
+              }
+            ],
+            "replicationStrategy": "Independent regional clusters per metropolitan area, preventing cascading multi-city outages."
+          },
+          "databaseSchemas": [
+            {
+              "tableName": "trips",
+              "engine": "PostgreSQL (Sharded Citus)",
+              "description": "Historical and active ride records.",
+              "columns": [
+                {
+                  "name": "trip_id",
+                  "type": "UUID",
+                  "key": "PK",
+                  "nullable": false,
+                  "description": "Unique trip identifier."
+                },
+                {
+                  "name": "rider_id",
+                  "type": "UUID",
+                  "key": "INDEX",
+                  "nullable": false,
+                  "description": "Rider user identifier."
+                },
+                {
+                  "name": "driver_id",
+                  "type": "UUID",
+                  "key": "INDEX",
+                  "nullable": true,
+                  "description": "Assigned driver identifier."
+                },
+                {
+                  "name": "pickup_h3",
+                  "type": "VARCHAR(15)",
+                  "key": "INDEX",
+                  "nullable": false,
+                  "description": "Pickup location Uber H3 cell ID."
+                },
+                {
+                  "name": "status",
+                  "type": "VARCHAR(20)",
+                  "key": "NONE",
+                  "nullable": false,
+                  "description": "REQUESTED, ASSIGNED, PICKED_UP, COMPLETED."
+                }
+              ],
+              "ddl": "CREATE TABLE trips (\n  trip_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n  rider_id UUID NOT NULL,\n  driver_id UUID,\n  pickup_h3 VARCHAR(15) NOT NULL,\n  status VARCHAR(20) NOT NULL DEFAULT 'REQUESTED',\n  created_at TIMESTAMPTZ DEFAULT NOW()\n);"
+            }
+          ],
+          "dataExchange": {
+            "protocolMatrix": [
+              {
+                "layer": "Driver App ↔ Ingress Gateway",
+                "protocol": "UDP / WebSocket over TLS",
+                "format": "Binary Protobuf (lat, lng, bearing, speed)",
+                "latencyTarget": "< 30ms",
+                "rationale": "Ultra-low telemetry transmission overhead without connection teardown penalty."
+              },
+              {
+                "layer": "Dispatch Engine ↔ Matching Workers",
+                "protocol": "gRPC Streaming",
+                "format": "Protobuf",
+                "latencyTarget": "< 5ms",
+                "rationale": "High-throughput inter-service streaming of candidate driver sets."
+              }
+            ],
+            "apiContractSample": {
+              "title": "Nearby Drivers Discovery API Contract",
+              "type": "GET /v1/drivers/nearby?h3=882681a533fffff&radius_rings=2",
+              "snippet": "{\n  \"center_cell\": \"882681a533fffff\",\n  \"drivers_count\": 8,\n  \"drivers\": [\n    { \"driver_id\": \"drv_901\", \"eta_seconds\": 180, \"bearing\": 45 },\n    { \"driver_id\": \"drv_442\", \"eta_seconds\": 240, \"bearing\": 180 }\n  ]\n}"
+            },
+            "e2eRequestFlow": [
+              {
+                "stepNumber": 1,
+                "actor": "Driver Phone",
+                "action": "Emit 4-Second GPS Telemetry Ping",
+                "component": "Driver Client",
+                "protocol": "UDP/Protobuf",
+                "detail": "Driver app emits lightweight GPS ping containing coordinates, speed, and heading."
+              },
+              {
+                "stepNumber": 2,
+                "actor": "Ingress Proxy",
+                "action": "Calculate H3 Hexagonal Cell",
+                "component": "Envoy / H3 Lib",
+                "protocol": "Internal Memory",
+                "detail": "Computes H3 cell ID and updates Redis geospatial sorted index."
+              },
+              {
+                "stepNumber": 3,
+                "actor": "Rider Client",
+                "action": "Request Ride Dispatch",
+                "component": "Rider App",
+                "protocol": "HTTPS / JSON",
+                "detail": "Rider requests pickup; gateway queries rider's H3 cell and 6 neighboring cells."
+              },
+              {
+                "stepNumber": 4,
+                "actor": "Dispatch Engine",
+                "action": "Acquire Driver Mutex Lock",
+                "component": "Redis Redlock",
+                "protocol": "TCP / Redis",
+                "detail": "Locks candidate driver for 10 seconds and dispatches offer notification."
+              }
+            ]
+          }
+        },
+        {
+          "id": "challenge-youtube",
+          "appName": "YouTube (Adaptive Video Transcoding & Ingestion)",
+          "tag": "Media / Compute-Intensive",
+          "badge": "DAG Pipeline & Multi-Bitrate HLS",
+          "diagramId": "youtubeArchitecture",
+          "overview": "Architecting an asynchronous video processing platform absorbing 500 hours of uploaded video per minute, transcoding in parallel, and delivering adaptive streams worldwide.",
+          "targetSpecs": {
+            "throughput": "500 hours uploaded/minute",
+            "latency": "< 30s Transcoding Completion",
+            "consistency": "Eventual Consistency",
+            "availability": "99.99% Availability"
+          },
+          "trainingComponents": [
+            {
+              "name": "Direct S3 Upload Gateway",
+              "role": "Pre-signed URL gateway allowing clients to upload multi-gigabyte master videos directly to object storage."
+            },
+            {
+              "name": "DAG Transcoding Scheduler",
+              "role": "Workflow orchestrator (Temporal / Step Functions) breaking videos into GOP chunks for parallel worker nodes."
+            },
+            {
+              "name": "Hardware Transcoding Workers",
+              "role": "GPU-accelerated workers encoding video chunks into 1080p, 720p, 480p H.264 and AV1 profiles."
+            },
+            {
+              "name": "Adaptive Manifest Builder",
+              "role": "Generates HLS .m3u8 and MPEG-DASH manifests stitching segments together for client player consumption."
+            }
+          ],
+          "questionsToSolve": [
+            {
+              "step": "1. Ingesting Large Video Files",
+              "options": [
+                {
+                  "text": "Upload entire video file through application web server to local disk",
+                  "correct": false,
+                  "reason": "Saturates web server bandwidth, risks out-of-memory crashes, and blocks application threads."
+                },
+                {
+                  "text": "Issue S3 Pre-Signed URLs and upload chunks directly from client to Object Storage",
+                  "correct": true,
+                  "reason": "Industry Standard! Completely offloads heavy file uploads from backend compute servers."
+                }
+              ]
+            },
+            {
+              "step": "2. Parallel Transcoding Architecture",
+              "options": [
+                {
+                  "text": "Transcode the entire monolithic video on a single large compute instance",
+                  "correct": false,
+                  "reason": "Takes hours for 4K videos; causes massive user upload wait times."
+                },
+                {
+                  "text": "Split video into Group-of-Pictures (GOP) chunks and transcode across worker fleet in parallel",
+                  "correct": true,
+                  "reason": "Excellent! Reduces transcoding time from hours to seconds by distributing GOP chunks across GPU nodes."
+                }
+              ]
+            }
+          ],
+          "databaseArchitecture": {
+            "overview": "Decoupled video metadata storage fronting distributed object storage and edge CDN caching.",
+            "polyglotTiers": [
+              {
+                "dbName": "Amazon S3 / Google Cloud Storage",
+                "dbType": "Object Storage",
+                "role": "Raw master videos and transcoded .ts video chunks.",
+                "shardingKey": "video_id/resolution/chunk_id",
+                "consistency": "Strong Read-After-Write"
+              },
+              {
+                "dbName": "Spanner / MySQL",
+                "dbType": "RDBMS",
+                "role": "Video metadata, title, channel owner, view counts, and comments.",
+                "shardingKey": "video_id",
+                "consistency": "Strict ACID"
+              }
+            ],
+            "replicationStrategy": "Geo-redundant object storage with automated edge CDN caching on playback."
+          },
+          "databaseSchemas": [
+            {
+              "tableName": "videos",
+              "engine": "Cloud Spanner / PostgreSQL",
+              "description": "Video catalog and processing state records.",
+              "columns": [
+                {
+                  "name": "video_id",
+                  "type": "VARCHAR(11)",
+                  "key": "PK",
+                  "nullable": false,
+                  "description": "Unique video base64 identifier."
+                },
+                {
+                  "name": "channel_id",
+                  "type": "UUID",
+                  "key": "INDEX",
+                  "nullable": false,
+                  "description": "Uploader channel identifier."
+                },
+                {
+                  "name": "status",
+                  "type": "VARCHAR(20)",
+                  "key": "NONE",
+                  "nullable": false,
+                  "description": "PROCESSING, READY, FAILED."
+                },
+                {
+                  "name": "duration_sec",
+                  "type": "INT",
+                  "key": "NONE",
+                  "nullable": false,
+                  "description": "Total duration in seconds."
+                },
+                {
+                  "name": "manifest_url",
+                  "type": "TEXT",
+                  "key": "NONE",
+                  "nullable": true,
+                  "description": "CDN URL to HLS master playlist .m3u8."
+                }
+              ],
+              "ddl": "CREATE TABLE videos (\n  video_id VARCHAR(11) PRIMARY KEY,\n  channel_id UUID NOT NULL,\n  status VARCHAR(20) NOT NULL DEFAULT 'PROCESSING',\n  duration_sec INT NOT NULL,\n  manifest_url TEXT,\n  created_at TIMESTAMPTZ DEFAULT NOW()\n);"
+            }
+          ],
+          "dataExchange": {
+            "protocolMatrix": [
+              {
+                "layer": "Client ↔ Object Storage",
+                "protocol": "HTTPS Multi-Part Upload",
+                "format": "Binary Raw Video Streams",
+                "latencyTarget": "< 100ms chunk write",
+                "rationale": "Direct upload bypassing application servers."
+              },
+              {
+                "layer": "Player ↔ Edge CDN",
+                "protocol": "HTTPS over HTTP/3 (QUIC)",
+                "format": "MPEG-DASH / HLS Segments",
+                "latencyTarget": "< 30ms TTFB",
+                "rationale": "High-throughput adaptive video delivery without transport HoL blocking."
+              }
+            ],
+            "apiContractSample": {
+              "title": "Video Upload Pre-Signed URL API Contract",
+              "type": "POST /v1/videos/upload-url",
+              "snippet": "{\n  \"video_id\": \"dQw4w9WgXcQ\",\n  \"upload_url\": \"https://storage.youtube.com/raw-ingest/dQw4w9WgXcQ?signature=abcdef123456\",\n  \"chunk_size_bytes\": 10485760,\n  \"expires_in_seconds\": 3600\n}"
+            },
+            "e2eRequestFlow": [
+              {
+                "stepNumber": 1,
+                "actor": "Creator",
+                "action": "Request Upload Pre-Signed URL",
+                "component": "API Gateway",
+                "protocol": "HTTPS / JSON",
+                "detail": "Creator client requests authenticated multi-part upload URL from API gateway."
+              },
+              {
+                "stepNumber": 2,
+                "actor": "Client",
+                "action": "Upload Video Direct to S3",
+                "component": "Object Storage",
+                "protocol": "HTTPS PUT",
+                "detail": "Client streams 10MB chunks directly to cloud object storage."
+              },
+              {
+                "stepNumber": 3,
+                "actor": "S3 Event",
+                "action": "Emit ObjectCreated Event",
+                "component": "Kafka Broker",
+                "protocol": "Async Message",
+                "detail": "Object storage notifies transcoding pipeline orchestrator that master video is ready."
+              },
+              {
+                "stepNumber": 4,
+                "actor": "Transcoding Fleet",
+                "action": "Parallel GOP Transcoding",
+                "component": "GPU Worker Fleet",
+                "protocol": "FFmpeg Internal",
+                "detail": "Workers split video into 3-second segments and encode into 1080p, 720p, 480p formats."
+              },
+              {
+                "stepNumber": 5,
+                "actor": "Manifest Builder",
+                "action": "Publish HLS Master Playlist",
+                "component": "CDN Origin",
+                "protocol": "HTTPS",
+                "detail": "Assembles .m3u8 playlist manifest and pushes cache invalidation to Edge CDNs."
+              }
+            ]
+          }
+        },
+        {
+          "id": "challenge-whatsapp",
+          "appName": "WhatsApp (Ultra-Scale Real-Time Chat)",
+          "tag": "Messaging / Massive Concurrency",
+          "badge": "WebSockets & ScyllaDB",
+          "diagramId": "chatArchitecture",
+          "overview": "Designing an end-to-end encrypted messaging engine supporting 2 Billion active users, processing 100 Billion messages daily with minimal server footprint.",
+          "targetSpecs": {
+            "throughput": "2 Million msgs/sec peak",
+            "latency": "< 100ms Delivery",
+            "consistency": "Strict Per-Conversation Ordering",
+            "availability": "99.999% Availability"
+          },
+          "trainingComponents": [
+            {
+              "name": "Erlang/Elixir Connection Gateway",
+              "role": "Lightweight actor processes holding millions of open bidirectional TCP connections per server."
+            },
+            {
+              "name": "Session Presence Registry",
+              "role": "Distributed in-memory directory tracking which gateway server holds each user's active socket."
+            },
+            {
+              "name": "Undelivered Message Store",
+              "role": "Ephemeral message queue holding messages until target offline recipients reconnect."
+            },
+            {
+              "name": "Signal Protocol Key Service",
+              "role": "Public identity keys and pre-keys distribution directory for end-to-end encryption."
+            }
+          ],
+          "questionsToSolve": [
+            {
+              "step": "1. Managing Massive Concurrent Socket Connections",
+              "options": [
+                {
+                  "text": "Spawn one OS thread per connected socket in Java/Node.js",
+                  "correct": false,
+                  "reason": "Thread memory overhead exhausts server RAM and causes excessive context-switching."
+                },
+                {
+                  "text": "Use lightweight actor processes (Erlang BEAM / Go goroutines) using non-blocking epoll",
+                  "correct": true,
+                  "reason": "Standard! Allows a single modern server instance to maintain 2M+ concurrent open TCP connections."
+                }
+              ]
+            },
+            {
+              "step": "2. Message Storage Strategy for Offline Users",
+              "options": [
+                {
+                  "text": "Store all messages permanently on server in relational tables",
+                  "correct": false,
+                  "reason": "Violates privacy principles and inflates storage costs exponentially."
+                },
+                {
+                  "text": "Ephemeral storage: delete message from server immediately upon receipt of delivery ACK",
+                  "correct": true,
+                  "reason": "Optimal! Servers store messages only while target is offline, purging upon delivery confirmation."
+                }
+              ]
+            }
+          ],
+          "databaseArchitecture": {
+            "overview": "Ephemeral queue storage combined with distributed wide-column historical tables.",
+            "polyglotTiers": [
+              {
+                "dbName": "Redis Cluster",
+                "dbType": "In-Memory Datastore",
+                "role": "User session registry and online presence status.",
+                "shardingKey": "user_id",
+                "consistency": "Volatile"
+              },
+              {
+                "dbName": "ScyllaDB",
+                "dbType": "Wide-Column Datastore",
+                "role": "Offline messages and group membership directory.",
+                "shardingKey": "recipient_id",
+                "consistency": "Tunable Quorum"
+              }
+            ],
+            "replicationStrategy": "Multi-datacenter replication factor 3 with local DC quorum reads/writes."
+          },
+          "databaseSchemas": [
+            {
+              "tableName": "offline_messages",
+              "engine": "ScyllaDB",
+              "description": "Stores undelivered messages awaiting recipient reconnection.",
+              "columns": [
+                {
+                  "name": "recipient_id",
+                  "type": "BIGINT",
+                  "key": "PK",
+                  "nullable": false,
+                  "description": "Target user phone/ID (Partition Key)."
+                },
+                {
+                  "name": "message_id",
+                  "type": "TIMEUUID",
+                  "key": "CLUSTERING_KEY",
+                  "nullable": false,
+                  "description": "Monotonic timestamp-based message identifier."
+                },
+                {
+                  "name": "sender_id",
+                  "type": "BIGINT",
+                  "key": "NONE",
+                  "nullable": false,
+                  "description": "Sender user ID."
+                },
+                {
+                  "name": "payload_encrypted",
+                  "type": "BLOB",
+                  "key": "NONE",
+                  "nullable": false,
+                  "description": "End-to-end encrypted message ciphertext."
+                }
+              ],
+              "ddl": "CREATE TABLE offline_messages (\n  recipient_id bigint,\n  message_id timeuuid,\n  sender_id bigint,\n  payload_encrypted blob,\n  PRIMARY KEY (recipient_id, message_id)\n) WITH CLUSTERING ORDER BY (message_id ASC);"
+            }
+          ],
+          "dataExchange": {
+            "protocolMatrix": [
+              {
+                "layer": "Client ↔ Gateway",
+                "protocol": "Persistent TLS over TCP / WebSocket",
+                "format": "Noise Protocol & Protobuf",
+                "latencyTarget": "< 30ms",
+                "rationale": "Minimal overhead, zero handshake penalty per message."
+              },
+              {
+                "layer": "Internal Servers",
+                "protocol": "gRPC",
+                "format": "Protobuf",
+                "latencyTarget": "< 2ms",
+                "rationale": "High-throughput inter-cluster routing."
+              }
+            ],
+            "apiContractSample": {
+              "title": "Encrypted Chat Message Packet",
+              "type": "Noise Protocol Binary Frame",
+              "snippet": "{\n  \"message_id\": \"1e8a9d00-4b2a-11ee-be56-0242ac120002\",\n  \"conversation_id\": \"conv_998124\",\n  \"sender_id\": 98214451,\n  \"ciphertext_base64\": \"vL8jQz8p9X2...==\", \n  \"iv\": \"3d9a1024b8e1\",\n  \"timestamp_ms\": 1693740000000\n}"
+            },
+            "e2eRequestFlow": [
+              {
+                "stepNumber": 1,
+                "actor": "Sender App",
+                "action": "Client-Side Encryption via Signal Protocol",
+                "component": "Mobile Client",
+                "protocol": "Signal / E2EE",
+                "detail": "Sender encrypts message with recipient's ratchet public key before transmission."
+              },
+              {
+                "stepNumber": 2,
+                "actor": "Connection Gateway",
+                "action": "Lookup Recipient Socket Gateway",
+                "component": "Redis Session Registry",
+                "protocol": "TCP / Redis",
+                "detail": "Gateway checks Redis to see if recipient currently has an active TCP socket."
+              },
+              {
+                "stepNumber": 3,
+                "actor": "Inter-Gateway Bus",
+                "action": "Forward Message to Target Gateway",
+                "component": "Kafka / gRPC",
+                "protocol": "gRPC",
+                "detail": "Routes ciphertext packet directly to gateway hosting recipient socket."
+              },
+              {
+                "stepNumber": 4,
+                "actor": "Recipient App",
+                "action": "Push Over Active Socket & Emit Delivery ACK",
+                "component": "Recipient Client",
+                "protocol": "WebSocket",
+                "detail": "Pushes packet to recipient, which acknowledges delivery receipt (Double Tick)."
+              }
+            ]
+          }
+        },
+        {
+          "id": "challenge-netflix",
+          "appName": "Netflix (Global Adaptive Video Streaming)",
+          "tag": "Media / Global Scale",
+          "badge": "CDN & Transcoding",
+          "diagramId": "netflixArchitecture",
+          "overview": "Designing a global video-on-demand platform serving 200M+ concurrent viewers with sub-second playback initiation and zero mid-stream buffering.",
+          "targetSpecs": {
+            "throughput": "100 Million streams",
+            "latency": "< 200ms TTFB",
+            "consistency": "Eventual Consistency",
+            "availability": "99.99% Availability"
+          },
+          "trainingComponents": [
+            {
+              "name": "Transcoding Pipeline",
+              "role": "Distributed microservices splitting uploaded master videos into multi-bitrate HLS and DASH profiles."
+            },
+            {
+              "name": "Open Connect CDN",
+              "role": "Custom edge caching appliances deployed directly inside ISP datacenters worldwide."
+            },
+            {
+              "name": "Dynamic Manifest Generator",
+              "role": "Generates personalized playlist manifests pointing client media players to the closest ISP edge caches."
+            },
+            {
+              "name": "Playback Telemetry Ingestion",
+              "role": "Real-time streaming telemetry capturing buffering rates, bitrate shifts, and network diagnostics."
+            }
+          ],
+          "questionsToSolve": [
+            {
+              "step": "1. Video Chunk Delivery Strategy",
+              "options": [
+                {
+                  "text": "Stream entire monolithic MP4 files from centralized cloud storage",
+                  "correct": false,
+                  "reason": "Excessive startup latency; cannot adapt to fluctuating mobile bandwidth."
+                },
+                {
+                  "text": "Segment videos into 2-6 second chunks with adaptive bitrate streaming (HLS / DASH)",
+                  "correct": true,
+                  "reason": "Standard! Players dynamically adjust bitrates to live network speeds, preventing playback stalls."
+                }
+              ]
+            },
+            {
+              "step": "2. Global Edge Caching Strategy",
+              "options": [
+                {
+                  "text": "Rely entirely on public third-party commercial CDNs",
+                  "correct": false,
+                  "reason": "Costly at massive petabyte scale; lacks integration with local ISP fiber loops."
+                },
+                {
+                  "text": "Deploy dedicated edge appliances (Open Connect) inside regional ISP networks",
+                  "correct": true,
+                  "reason": "Superb! Offloads 95% of backbone traffic and serves videos from within the viewer's local ISP."
+                }
+              ]
+            }
+          ],
+          "databaseArchitecture": {
+            "overview": "Tiered catalog datastore fronted by distributed caching and asynchronous telemetry ingestion.",
+            "polyglotTiers": [
+              {
+                "dbName": "Amazon DynamoDB",
+                "dbType": "NoSQL Key-Value",
+                "role": "User profiles, viewing bookmarks, and watch history.",
+                "shardingKey": "user_id",
+                "consistency": "Eventual"
+              },
+              {
+                "dbName": "EVCache (Memcached)",
+                "dbType": "Distributed Cache",
+                "role": "Personalized catalog feeds and recommendation rows.",
+                "shardingKey": "profile_id",
+                "consistency": "Volatile"
+              },
+              {
+                "dbName": "Apache Iceberg on S3",
+                "dbType": "Data Lake",
+                "role": "Analytics and offline machine learning recommendation training.",
+                "shardingKey": "event_date",
+                "consistency": "Batch"
+              }
+            ],
+            "replicationStrategy": "Multi-region active-active DynamoDB global tables with automatic bi-directional replication."
+          },
+          "databaseSchemas": [
+            {
+              "tableName": "user_playback_state",
+              "engine": "DynamoDB",
+              "description": "Tracks exact playback timestamp per profile for resume functionality.",
+              "columns": [
+                {
+                  "name": "profile_id",
+                  "type": "String",
+                  "key": "PK",
+                  "nullable": false,
+                  "description": "Unique profile identifier (Partition Key)."
+                },
+                {
+                  "name": "video_id",
+                  "type": "String",
+                  "key": "CLUSTERING_KEY",
+                  "nullable": false,
+                  "description": "Unique video title identifier (Sort Key)."
+                },
+                {
+                  "name": "playback_position_sec",
+                  "type": "Number",
+                  "key": "NONE",
+                  "nullable": false,
+                  "description": "Last watched position in seconds."
+                },
+                {
+                  "name": "updated_at",
+                  "type": "Number",
+                  "key": "NONE",
+                  "nullable": false,
+                  "description": "Epoch timestamp of last update."
+                }
+              ],
+              "ddl": "{\n  \"TableName\": \"user_playback_state\",\n  \"KeySchema\": [\n    {\"AttributeName\": \"profile_id\", \"KeyType\": \"HASH\"},\n    {\"AttributeName\": \"video_id\", \"KeyType\": \"RANGE\"}\n  ]\n}"
+            }
+          ],
+          "dataExchange": {
+            "protocolMatrix": [
+              {
+                "layer": "Client -> Edge CDN",
+                "protocol": "HTTPS over QUIC / HTTP/3",
+                "format": "MPEG-DASH / HLS Byte Streams",
+                "latencyTarget": "< 50ms",
+                "rationale": "High-throughput video chunk delivery without transport-level Head-of-Line blocking."
+              },
+              {
+                "layer": "Player -> Telemetry Gateway",
+                "protocol": "HTTP/2 POST",
+                "format": "Protobuf",
+                "latencyTarget": "< 200ms",
+                "rationale": "Lightweight client metrics streaming."
+              }
+            ],
+            "apiContractSample": {
+              "title": "Playback Session License & Manifest API Contract",
+              "type": "POST /v1/playback/license",
+              "snippet": "{\n  \"session_token\": \"sess_89a12b4c\",\n  \"video_id\": \"stranger-things-s4e1\",\n  \"manifest_url\": \"https://cdn.netflix.com/manifests/st4_1.mpd\",\n  \"drm_key_system\": \"widevine\"\n}"
+            },
+            "e2eRequestFlow": [
+              {
+                "stepNumber": 1,
+                "actor": "Viewer Client",
+                "action": "Click Play Video",
+                "component": "Smart TV App",
+                "protocol": "HTTPS / JSON",
+                "detail": "Client requests dynamic playback manifest tailored to device capabilities and ISP location."
+              },
+              {
+                "stepNumber": 2,
+                "actor": "Manifest Service",
+                "action": "Generate ISP-Targeted Manifest",
+                "component": "Manifest Engine",
+                "protocol": "HTTPS",
+                "detail": "Selects closest Open Connect CDN appliance embedded in the user's internet provider."
+              },
+              {
+                "stepNumber": 3,
+                "actor": "Player Media Engine",
+                "action": "Stream Video Chunks via QUIC",
+                "component": "Open Connect CDN",
+                "protocol": "HTTP/3",
+                "detail": "Streams 2-second media chunks, dynamically switching bitrates based on live network speeds."
+              }
+            ]
+          }
+        },
+        {
+          "id": "challenge-tiktok",
+          "appName": "TikTok (Real-Time For You Feed & Smart Pre-Buffering)",
+          "tag": "Short Video / Ultra-Fast Feedback",
+          "badge": "Sub-Second Rec & Pre-buffer",
+          "diagramId": "tiktokArchitecture",
+          "overview": "Designing a high-retention short video platform serving personalized candidate feeds with sub-500ms recommendation updates and zero-latency swiping.",
+          "targetSpecs": {
+            "throughput": "1 Billion daily active users",
+            "latency": "< 20ms Swipe Initiation",
+            "consistency": "Eventual Consistency",
+            "availability": "99.99% Availability"
+          },
+          "trainingComponents": [
+            {
+              "name": "Watch Signal Streamer",
+              "role": "Captures instant watch percentage, replays, likes, and skips emitted by client mobile apps."
+            },
+            {
+              "name": "Real-Time Feature Store",
+              "role": "Low-latency Redis / Flink cluster maintaining live user interaction affinities over 5-minute sliding windows."
+            },
+            {
+              "name": "Candidate Retrieval & Ranker",
+              "role": "Two-stage ML ranking pipeline: Vector DB nearest-neighbor candidate filtering -> Deep Neural Net ranking."
+            },
+            {
+              "name": "Client Smart Pre-Buffering",
+              "role": "App downloads first 3 seconds of the next 3 candidate videos in background for instant swiping."
+            }
+          ],
+          "questionsToSolve": [
+            {
+              "step": "1. Achieving Instantaneous Swiping Experience",
+              "options": [
+                {
+                  "text": "Wait for user to swipe to next video before initiating download from CDN",
+                  "correct": false,
+                  "reason": "Causes visible buffering spinner and breaks user immersion."
+                },
+                {
+                  "text": "Pre-buffer the first 3 seconds of the upcoming 3 candidate videos in client memory",
+                  "correct": true,
+                  "reason": "Optimal! Guarantees instantaneous playback start when user swipes, while downloading remaining chunks during playback."
+                }
+              ]
+            },
+            {
+              "step": "2. Incorporating Live User Feedback into Feed",
+              "options": [
+                {
+                  "text": "Re-train recommendation models nightly via offline batch MapReduce jobs",
+                  "correct": false,
+                  "reason": "Too slow; fails to adapt to session mood shifts or instant viral trends."
+                },
+                {
+                  "text": "Stream engagement events directly to Apache Flink to update session vector weights in sub-second time",
+                  "correct": true,
+                  "reason": "Superb! Adapts the very next video recommendation to what the user liked or skipped 5 seconds ago."
+                }
+              ]
+            }
+          ],
+          "databaseArchitecture": {
+            "overview": "Real-time streaming feature store combined with vector nearest-neighbor databases.",
+            "polyglotTiers": [
+              {
+                "dbName": "Redis (Session Feature Store)",
+                "dbType": "In-Memory Datastore",
+                "role": "Real-time user engagement features and short-term session vector.",
+                "shardingKey": "user_id",
+                "consistency": "Sub-millisecond"
+              },
+              {
+                "dbName": "Milvus / Qdrant",
+                "dbType": "Vector Database",
+                "role": "High-dimensional video candidate embeddings for nearest-neighbor search.",
+                "shardingKey": "category_id",
+                "consistency": "Eventual"
+              }
+            ],
+            "replicationStrategy": "Distributed regional vector index replicas with real-time stream ingestion."
+          },
+          "databaseSchemas": [
+            {
+              "tableName": "user_session_signals",
+              "engine": "Redis Hash / In-Memory",
+              "description": "Short-term real-time engagement features per active user.",
+              "columns": [
+                {
+                  "name": "user_id",
+                  "type": "String",
+                  "key": "PK",
+                  "nullable": false,
+                  "description": "Active user identifier."
+                },
+                {
+                  "name": "recent_tags_liked",
+                  "type": "List<String>",
+                  "key": "NONE",
+                  "nullable": false,
+                  "description": "Tags from videos watched > 80%."
+                },
+                {
+                  "name": "session_skip_count",
+                  "type": "Number",
+                  "key": "NONE",
+                  "nullable": false,
+                  "description": "Skips within last 60 seconds."
+                }
+              ],
+              "ddl": "HSET session:user_99182 recent_liked '[\"coding\", \"system_design\"]' skip_rate 0.15"
+            }
+          ],
+          "dataExchange": {
+            "protocolMatrix": [
+              {
+                "layer": "Mobile App ↔ Signal Ingestion",
+                "protocol": "HTTP/2 POST Stream",
+                "format": "Compact Protobuf",
+                "latencyTarget": "< 50ms",
+                "rationale": "High-frequency watch duration and interaction telemetry."
+              },
+              {
+                "layer": "Ranker ↔ Feed Serving",
+                "protocol": "gRPC Streaming",
+                "format": "Protobuf",
+                "latencyTarget": "< 15ms",
+                "rationale": "Sub-second candidate recommendation ranking."
+              }
+            ],
+            "apiContractSample": {
+              "title": "For You Feed Generation API Contract",
+              "type": "GET /v1/feed/foryou?count=10",
+              "snippet": "{\n  \"feed_id\": \"foryou_batch_1920\",\n  \"candidates\": [\n    { \"video_id\": \"tk_8912\", \"prebuffer_url\": \"https://edge.tiktok.com/chunk_tk_8912_0.mp4\" },\n    { \"video_id\": \"tk_7721\", \"prebuffer_url\": \"https://edge.tiktok.com/chunk_tk_7721_0.mp4\" }\n  ]\n}"
+            },
+            "e2eRequestFlow": [
+              {
+                "stepNumber": 1,
+                "actor": "User",
+                "action": "Watch Video > 80%",
+                "component": "Mobile App",
+                "protocol": "HTTP/2",
+                "detail": "App streams completion signal to real-time ingestion gateway."
+              },
+              {
+                "stepNumber": 2,
+                "actor": "Feature Engine",
+                "action": "Update Session Vector",
+                "component": "Flink / Redis",
+                "protocol": "Stream",
+                "detail": "Apache Flink updates user affinity vector in Redis in sub-500ms."
+              },
+              {
+                "stepNumber": 3,
+                "actor": "Feed Service",
+                "action": "Pre-buffer Upcoming Videos",
+                "component": "Edge CDN",
+                "protocol": "HTTP/3",
+                "detail": "Client fetches next candidate list and pre-buffers the first 3 seconds."
+              }
+            ]
+          }
+        },
+        {
+          "id": "challenge-ecommerce",
+          "appName": "Amazon / Flash Sale (High-Concurrency Flash Sales)",
+          "tag": "E-Commerce / Ultra-High Concurrency",
+          "badge": "Virtual Waiting Room & Atomic Lua",
+          "diagramId": "flashSaleArchitecture",
+          "overview": "Architecting an enterprise flash sale platform handling 100,000 items selling out in 60 seconds with 1,000,000 concurrent shoppers, preventing overselling and database crashes.",
+          "targetSpecs": {
+            "throughput": "100,000 tx/sec peak",
+            "latency": "< 200ms Checkout",
+            "consistency": "Strict Linearizable Inventory",
+            "availability": "99.999% Availability"
+          },
+          "trainingComponents": [
+            {
+              "name": "Virtual Waiting Room",
+              "role": "Edge queuing system throttling traffic surges and draining buyers at a controlled rate matching downstream database capacity."
+            },
+            {
+              "name": "In-Memory Atomic Inventory Engine",
+              "role": "Redis Cluster executing atomic Lua scripts to verify availability and reserve items in memory in O(1)."
+            },
+            {
+              "name": "Saga Checkout Coordinator",
+              "role": "Orchestrator managing multi-step payments with automated inventory rollbacks on abandoned checkouts."
+            },
+            {
+              "name": "Asynchronous Order Settlement",
+              "role": "Kafka event pipeline persisting confirmed sales to PostgreSQL databases in orderly batches."
+            }
+          ],
+          "questionsToSolve": [
+            {
+              "step": "1. Ingress Surge Protection",
+              "options": [
+                {
+                  "text": "Allow all 1,000,000 concurrent users to query the primary database simultaneously",
+                  "correct": false,
+                  "reason": "Exhausts database connection pools immediately and crashes the entire website."
+                },
+                {
+                  "text": "Deploy an Edge Virtual Waiting Room to queue users and admit buyers at a controlled rate",
+                  "correct": true,
+                  "reason": "Industry Standard! Protects backend services from traffic spikes by matching admission to database capacity."
+                }
+              ]
+            },
+            {
+              "step": "2. Eliminating Inventory Overselling",
+              "options": [
+                {
+                  "text": "Use database row locking: `SELECT FOR UPDATE` on the inventory table",
+                  "correct": false,
+                  "reason": "Causes massive lock contention and deadlocks under thousands of concurrent checkouts."
+                },
+                {
+                  "text": "Execute atomic inventory deduction in Redis via Lua scripts: `DECRBY` bounded at zero",
+                  "correct": true,
+                  "reason": "Superb! Decouples hot inventory deductions to in-memory atomic operations with zero overselling."
+                }
+              ]
+            }
+          ],
+          "databaseArchitecture": {
+            "overview": "In-memory inventory reservation layer fronting partitioned relational order databases.",
+            "polyglotTiers": [
+              {
+                "dbName": "Redis Cluster",
+                "dbType": "In-Memory Key-Value",
+                "role": "Atomic inventory counters, temporary 10-minute cart holds, and rate limiting.",
+                "shardingKey": "item_id",
+                "consistency": "Strict Atomic In-Memory"
+              },
+              {
+                "dbName": "PostgreSQL (Aurora Multi-AZ)",
+                "dbType": "Sharded RDBMS",
+                "role": "Confirmed purchase orders, customer billing accounts, and invoices.",
+                "shardingKey": "order_id",
+                "consistency": "Strict ACID"
+              }
+            ],
+            "replicationStrategy": "Multi-AZ synchronous replication with automated failover and read replicas."
+          },
+          "databaseSchemas": [
+            {
+              "tableName": "flash_sale_inventory",
+              "engine": "PostgreSQL / Redis Mirror",
+              "description": "Core inventory table recording total, reserved, and sold quantities.",
+              "columns": [
+                {
+                  "name": "item_id",
+                  "type": "UUID",
+                  "key": "PK",
+                  "nullable": false,
+                  "description": "Unique product item identifier."
+                },
+                {
+                  "name": "total_stock",
+                  "type": "INT",
+                  "key": "NONE",
+                  "nullable": false,
+                  "description": "Total initial inventory allocated."
+                },
+                {
+                  "name": "reserved_stock",
+                  "type": "INT",
+                  "key": "NONE",
+                  "nullable": false,
+                  "description": "Currently held in active 10-minute checkouts."
+                },
+                {
+                  "name": "sold_stock",
+                  "type": "INT",
+                  "key": "NONE",
+                  "nullable": false,
+                  "description": "Confirmed settled purchases."
+                }
+              ],
+              "ddl": "CREATE TABLE flash_sale_inventory (\n  item_id UUID PRIMARY KEY,\n  total_stock INT NOT NULL CHECK (total_stock >= 0),\n  reserved_stock INT NOT NULL DEFAULT 0,\n  sold_stock INT NOT NULL DEFAULT 0\n);"
+            }
+          ],
+          "dataExchange": {
+            "protocolMatrix": [
+              {
+                "layer": "Shopper ↔ Waiting Room",
+                "protocol": "HTTPS / SSE",
+                "format": "JSON Queue Ticket",
+                "latencyTarget": "< 100ms",
+                "rationale": "Real-time queue position updates without polling."
+              },
+              {
+                "layer": "Checkout ↔ Redis",
+                "protocol": "RESP over TCP",
+                "format": "Atomic Lua Script",
+                "latencyTarget": "< 2ms",
+                "rationale": "Sub-millisecond atomic inventory deductions."
+              }
+            ],
+            "apiContractSample": {
+              "title": "Inventory Reservation API Contract",
+              "type": "POST /v1/checkout/reserve",
+              "snippet": "{\n  \"item_id\": \"ps5_pro_console\",\n  \"quantity\": 1,\n  \"hold_token\": \"hold_98a72b11\",\n  \"expires_in_seconds\": 600\n}"
+            },
+            "e2eRequestFlow": [
+              {
+                "stepNumber": 1,
+                "actor": "Shopper",
+                "action": "Enter Flash Sale Page",
+                "component": "Virtual Waiting Room",
+                "protocol": "HTTPS",
+                "detail": "Edge waiting room admits user when backend capacity allows."
+              },
+              {
+                "stepNumber": 2,
+                "actor": "Checkout Service",
+                "action": "Atomic Lua Inventory Reservation",
+                "component": "Redis Cluster",
+                "protocol": "TCP / Lua",
+                "detail": "Atomically checks remaining stock and reserves 1 item for 10 minutes."
+              },
+              {
+                "stepNumber": 3,
+                "actor": "Payment Service",
+                "action": "Authorize Payment Charge",
+                "component": "Payment Gateway",
+                "protocol": "HTTPS / mTLS",
+                "detail": "Processes customer credit card charge within the 10-minute window."
+              },
+              {
+                "stepNumber": 4,
+                "actor": "Order Settler",
+                "action": "Asynchronous SQL Order Commit",
+                "component": "Kafka / PostgreSQL",
+                "protocol": "SQL Commit",
+                "detail": "Emits confirmed purchase event and persists order row to relational datastore."
+              }
+            ]
+          }
+        }
+      ]
     }
   ]
 };
