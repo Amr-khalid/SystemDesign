@@ -2406,6 +2406,60 @@ const SystemDesignDataEn = {
           }
         }
       ]
+    },
+    {
+      "id": "module-9",
+      "number": "9",
+      "title": "Interactive Code Lab — Distributed Algorithms Sandbox",
+      "subtitle": "In-browser executable implementations of fundamental distributed systems algorithms: LRU Cache, Rate Limiter, Consistent Hashing, Bloom Filter, and Merkle Tree",
+      "isCodeLab": true,
+      "algorithms": [
+        {
+          "id": "algo-lru",
+          "name": "LRU Cache (Least Recently Used)",
+          "badge": "O(1) Hash Table + Doubly Linked List",
+          "category": "In-Memory Caching",
+          "description": "Production-grade LRU Cache implementation using a Doubly-Linked List with Hash Map achieving O(1) Get and Put operations, tracking hit rates, and evicting stale keys automatically.",
+          "code": "// ============================================================================\n// 1. تطبيق LRU Cache (Doubly Linked List + Hash Map) - سرعة O(1)\n// ============================================================================\n\nclass Node {\n  constructor(key, value) {\n    this.key = key;\n    this.value = value;\n    this.prev = null;\n    this.next = null;\n  }\n}\n\nclass LRUCache {\n  constructor(capacity) {\n    this.capacity = capacity;\n    this.cache = new Map(); // key -> Node\n    this.head = new Node(0, 0); // الأكثر استخداماً (MRU)\n    this.tail = new Node(0, 0); // الأقل استخداماً (LRU)\n    this.head.next = this.tail;\n    this.tail.prev = this.head;\n    \n    this.stats = { hits: 0, misses: 0, evictions: 0, total: 0 };\n  }\n\n  _remove(node) {\n    node.prev.next = node.next;\n    node.next.prev = node.prev;\n  }\n\n  _add(node) {\n    node.next = this.head.next;\n    node.next.prev = node;\n    this.head.next = node;\n    node.prev = this.head;\n  }\n\n  get(key) {\n    this.stats.total++;\n    if (this.cache.has(key)) {\n      this.stats.hits++;\n      const node = this.cache.get(key);\n      this._remove(node);\n      this._add(node); // نقله للمقدمة كأحدث عنصر تم الوصول إليه\n      console.log(\\"
+        },
+        {
+          "id": "algo-rate-limiter",
+          "name": "Token Bucket Rate Limiter",
+          "badge": "Traffic Shaping & Throttling",
+          "category": "API Gateway & Security",
+          "description": "Standard rate-limiting algorithm that maintains a bucket of tokens refilled at a constant rate, accommodating traffic bursts up to capacity.",
+          "code": "// ============================================================================\n// 3. محدد معدل الطلبات (Token Bucket Rate Limiter)\n// ============================================================================\n\nclass TokenBucketRateLimiter {\n  constructor(capacity, refillRatePerSecond) {\n    this.capacity = capacity;               // أقصى سعة من الرموز (Tokens)\n    this.refillRate = refillRatePerSecond; // عدد الرموز المضافة كل ثانية\n    this.tokens = capacity;                 // الرموز الحالية\n    this.lastRefillTime = Date.now();       // الطابع الزمني لآخر تجديد\n    \n    this.stats = { allowed: 0, rejected: 0 };\n  }\n\n  _refill() {\n    const now = Date.now();\n    const elapsedTimeInSeconds = (now - this.lastRefillTime) / 1000;\n    const tokensToAdd = elapsedTimeInSeconds * this.refillRate;\n    \n    this.tokens = Math.min(this.capacity, this.tokens + tokensToAdd);\n    this.lastRefillTime = now;\n  }\n\n  allowRequest(tokensNeeded = 1) {\n    this._refill();\n\n    if (this.tokens >= tokensNeeded) {\n      this.tokens -= tokensNeeded;\n      this.stats.allowed++;\n      return { allowed: true, remainingTokens: Math.floor(this.tokens) };\n    } else {\n      this.stats.rejected++;\n      const timeToWait = ((tokensNeeded - this.tokens) / this.refillRate).toFixed(2);\n      return { allowed: false, remainingTokens: 0, retryAfterSeconds: timeToWait };\n    }\n  }\n}\n\n// ------------------- تشغيل سيناريو المحاكاة -------------------\nconsole.log(\"🚀 محاكاة محدد معدل الطلبات (Token Bucket Rate Limiter):\");\nconsole.log(\"السعة القصوى: 5 رموز | معدل التجديد: 1 رمز كل ثانية (1 token/sec)\");\n\nconst limiter = new TokenBucketRateLimiter(5, 1);\n\n// اختبار هجمة متزامنة (Burst) بـ 8 طلبات فورية\nconsole.log(\"\\\\n⚡ إرسال هجمة فورية (Burst) مكونة من 8 طلبات:\");\nfor (let i = 1; i <= 8; i++) {\n  const result = limiter.allowRequest(1);\n  if (result.allowed) {\n    console.log(\\"
+        },
+        {
+          "id": "algo-consistent-hashing",
+          "name": "Consistent Hashing Ring",
+          "badge": "2^32 Ring + Virtual Nodes",
+          "category": "Distributed Routing",
+          "description": "Maps keys and server nodes to a 32-bit circular hash ring with virtual nodes to prevent hot spots and minimize key redistribution during cluster re-balancing."
+        },
+        {
+          "id": "algo-bloom-filter",
+          "name": "Bloom Filter",
+          "badge": "Probabilistic Set Membership",
+          "category": "Big Data Structures",
+          "description": "A space-efficient probabilistic data structure that tests whether an element is in a set. Returns false positive with bounded probability; never returns false negative.",
+          "code": "// ============================================================================\n// 5. فلتر بلوم الاحتمالي (Bloom Filter)\n// ============================================================================\n\nclass BloomFilter {\n  constructor(size = 64, hashCount = 3) {\n    this.size = size;\n    this.hashCount = hashCount;\n    this.bitArray = new Array(size).fill(0);\n  }\n\n  _hashes(str) {\n    const hashes = [];\n    let h1 = 0, h2 = 0;\n    for (let i = 0; i < str.length; i++) {\n      h1 = (h1 * 31 + str.charCodeAt(i)) & 0xFFFFFFFF;\n      h2 = (h2 * 37 + str.charCodeAt(i)) & 0xFFFFFFFF;\n    }\n    for (let i = 0; i < this.hashCount; i++) {\n      const combined = Math.abs((h1 + i * h2) % this.size);\n      hashes.push(combined);\n    }\n    return hashes;\n  }\n\n  add(str) {\n    const indices = this._hashes(str);\n    indices.forEach(idx => this.bitArray[idx] = 1);\n    console.log(\\"
+        },
+        {
+          "id": "algo-merkle-tree",
+          "name": "Merkle Tree (Hash Tree)",
+          "badge": "Data Integrity & Anti-Entropy",
+          "category": "Decentralized Systems",
+          "description": "A cryptographic binary tree where leaf nodes store data block hashes and parent nodes store the combined hash of their children, enabling O(log N) verification of distributed replica synchronization."
+        }
+      ]
+    },
+    {
+      "id": "module-10",
+      "number": "10",
+      "title": "Interview Questions — Complete Systems Interview Bank",
+      "subtitle": "Comprehensive interactive interview prep bank across all levels with Staff+ model answers, hints, and code",
+      "isInterviewQuestions": true
     }
   ]
 };
