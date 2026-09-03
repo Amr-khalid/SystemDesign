@@ -525,6 +525,56 @@ const SystemDesignDataEn = {
           "l1": "Use database auto-increment ID column or multi-master auto-increment offsets (step = N). (Suffers from single-point bottlenecks and lack of global sorting).",
           "l2": "Implement Twitter Snowflake 64-bit ID layout: 1 bit unused, 41 bits millisecond timestamp (69 years lifetime), 10 bits worker/datacenter machine ID (1024 nodes), 12 bits sequence number (4096 IDs/ms per node).",
           "l3": "Handle NTP Clock Drift safely: If system clock moves backward, buffer requests or sleep until clock catches up. Deploy as lightweight sidecar daemon providing sub-millisecond local generation."
+        },
+        {
+          "id": "prob-3-22",
+          "number": "3.22",
+          "title": "Global Push Notification System — APNs / FCM Gateway",
+          "category": "Priority Queues & Bulk Delivery",
+          "calculations": "• 1B active devices, 10B push notifications delivered daily with breaking news alerts delivering to 50M devices in under 5 minutes.",
+          "l1": "Store device tokens in relational database and loop through users synchronously making HTTP calls to Apple APNs and Google FCM.",
+          "l2": "Decouple delivery pipeline into Priority Queues in Apache Kafka (High Priority for OTPs/2FA, Medium for Direct Messages, Low for Marketing). Worker pools consume batches and maintain persistent HTTP/2 connection pools to APNs/FCM.",
+          "l3": "Respect user notification preferences, rate limits, and quiet hours. Maintain Dead Letter Queues (DLQ) for failed tokens, automatically invalidating stale and uninstalled device tokens."
+        },
+        {
+          "id": "prob-3-23",
+          "number": "3.23",
+          "title": "Search Autocomplete & Typeahead — Google Suggest",
+          "category": "Trie Prefix Trees & Caching",
+          "calculations": "• 5B searches daily, 5 keystrokes per search = 25B autocomplete requests (~300,000 QPS) with latency < 30ms.",
+          "l1": "Execute SQL queries with `SELECT query FROM searches WHERE query LIKE 'prefix%' ORDER BY count DESC LIMIT 5`.",
+          "l2": "Construct an in-memory Trie (Prefix Tree) where each node stores the top 5 most frequent search terms for its prefix, eliminating deep subtree traversals on keystrokes.",
+          "l3": "Pre-compute and distribute serialized Trie shards across edge memory nodes. Update term frequencies offline in batch via MapReduce / Spark, hot-swapping active Trie instances in memory without downtime."
+        },
+        {
+          "id": "prob-3-24",
+          "number": "3.24",
+          "title": "Activity Newsfeed Architecture — Facebook / LinkedIn",
+          "category": "Timeline Aggregation & Storage",
+          "calculations": "• 2B users, 500M daily active users reading feeds 10 times daily = 5B feed views/day (~60,000 read QPS).",
+          "l1": "Store user friendships and posts in database; query and sort friends' posts dynamically on feed load.",
+          "l2": "Implement Fan-out on Write with Redis Sorted Sets (ZSET), where post IDs are scored by timestamp. Feed generation workers push post pointers to active followers' feed caches.",
+          "l3": "Apply Feed Ranking ML models scoring relevance based on engagement affinity, recency, and media type. Invalidate cached feed items on post deletion and unfriend actions."
+        },
+        {
+          "id": "prob-3-25",
+          "number": "3.25",
+          "title": "Real-Time Gaming Leaderboard — Battle Royale / Chess.com",
+          "category": "Sorted Sets & SkipLists",
+          "calculations": "• 10M active players, 500,000 score updates per second, instant global rank queries.",
+          "l1": "Store player scores in SQL database: `SELECT rank FROM players ORDER BY score DESC`. (Table scans fail under heavy concurrent write loads).",
+          "l2": "Utilize Redis Sorted Sets (ZSET) powered internally by SkipLists and Hash Maps. `ZADD` updates scores in O(log N) and `ZREVRANK` / `ZREVRANGE` retrieves rankings and leaderboard slices in O(log N).",
+          "l3": "For hundred-million player scale, partition leaderboards into Score Ranges or percentiles across Redis instances. Cache Top 100 global leaderboards at CDN edges with sub-second TTL."
+        },
+        {
+          "id": "prob-3-26",
+          "number": "3.26",
+          "title": "Distributed Job Scheduler — Quartz / Airbnb Chronos",
+          "category": "Distributed Timers & Task Execution",
+          "calculations": "• Schedule and reliably execute 100M jobs daily with varying recurrence schedules (Cron) and millisecond precision.",
+          "l1": "Store scheduled jobs in SQL database with polling thread: `SELECT * FROM jobs WHERE execute_at <= NOW() AND status = 'PENDING'`.",
+          "l2": "Decouple scheduler into Leader-Follower coordinators using ZooKeeper / etcd for leader election. The leader partitions job triggers into prioritized time buckets in Redis Sorted Sets.",
+          "l3": "Distribute task execution to worker clusters via Apache Kafka topics. Implement heartbeats, distributed execution leases, and automatic retries with exponential backoff on worker failure."
         }
       ]
     }
