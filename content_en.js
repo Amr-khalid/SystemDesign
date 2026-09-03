@@ -435,6 +435,46 @@ const SystemDesignDataEn = {
           "l1": "Model listings with availability calendar table `(listing_id, date, status, price)`. Query availability with SQL `WHERE status = 'available' AND date BETWEEN ? AND ?`.",
           "l2": "Optimize spatial search by pre-indexing listings into Geohash / H3 buckets. Maintain 365-day availability bitmasks in Redis (1 bit per day) to verify multi-night stays in sub-millisecond bitwise operations (AND bitwise match).",
           "l3": "Prevent double-booking during checkout using two-phase reservation with short expiration TTL. Apply dynamic pricing algorithms calculating localized demand spikes and seasonality."
+        },
+        {
+          "id": "prob-3-13",
+          "number": "3.13",
+          "title": "Personalized Music Streaming — Spotify",
+          "category": "Audio Caching & Recommendation",
+          "calculations": "• 500M active listeners, 100M song library, 10B streams played daily.",
+          "l1": "Store master audio tracks in object storage in multi-bitrate Ogg Vorbis / AAC formats. Stream tracks through CDN to client media players.",
+          "l2": "Implement aggressive client-side LRU audio disk caching on user phones/desktops. Prefetch next track in playlist during current song playback to guarantee zero playback stutter.",
+          "l3": "Generate personalized recommendations (Discover Weekly) via collaborative filtering on Apache Spark, generating vector embeddings stored in Milvus / Qdrant vector databases for instant nearest-neighbor similarity search."
+        },
+        {
+          "id": "prob-3-14",
+          "number": "3.14",
+          "title": "Distributed Web Crawler — Google Bot / Bingbot",
+          "category": "Graph Traversal & Politeness",
+          "calculations": "• 1 Billion web pages crawled per month (~400 pages/second).\n• Average page size: 500KB = 500TB raw HTML monthly.",
+          "l1": "Maintain a URL Frontier queue. Crawler worker nodes dequeue URLs, resolve DNS, fetch HTML content via HTTP, parse links, and enqueue discovered URLs.",
+          "l2": "Enforce Politeness policies via host-based queues and delay timers to avoid overloading target web servers. Implement duplicate URL detection via Bloom Filters and document content deduplication via 64-bit SimHash.",
+          "l3": "Scale to multi-datacenter crawlers with distributed Frontier partitions. Prioritize high-authority domains via PageRank-weighted queues, honoring robots.txt directives and canonical links."
+        },
+        {
+          "id": "prob-3-15",
+          "number": "3.15",
+          "title": "Top-K Heavy Hitters — Twitter Trending Topics / YouTube Viral",
+          "category": "Stream Analytics & Sketching",
+          "calculations": "• 100,000 events/second stream. Goal: Find top 100 most frequent hashtags in real-time.",
+          "l1": "Maintain hash map counters of hashtag occurrences. Sort entries by frequency periodically. (Fails at scale due to unbounded memory consumption).",
+          "l2": "Implement Count-Min Sketch: Probabilistic fixed-size 2D array with d hash functions that tracks frequencies with bounded error in constant memory. Combine with a Min-Heap of size K to track current top items.",
+          "l3": "Implement Space-Saving Algorithm / Lossy Counting over tumbling 1-minute and 1-hour time windows in Apache Flink, emitting real-time trending leaderboards to Redis with zero memory leaks."
+        },
+        {
+          "id": "prob-3-16",
+          "number": "3.16",
+          "title": "Distributed Rate Limiter — Cloudflare / Stripe API",
+          "category": "Throttling & Traffic Shaping",
+          "calculations": "• 1M API requests/sec across 100 edge nodes. Limit users to 100 requests per minute.",
+          "l1": "Basic Fixed Window counter in database: Count requests per minute bucket. (Suffers from edge burst vulnerability allowing 2x limit at window boundaries).",
+          "l2": "Implement Token Bucket or Sliding Window Log in Redis. Sliding Window Log records timestamped sorted sets (ZSET), trimming entries older than window size and checking set cardinality.",
+          "l3": "Adopt Sliding Window Counter combining current and previous bucket weights in memory for O(1) space and CPU. Synchronize local edge proxy counters asynchronously using Redis cluster or local memory batches to minimize Redis round-trip latency."
         }
       ]
     }
