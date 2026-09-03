@@ -395,6 +395,46 @@ const SystemDesignDataEn = {
           "l1": "Fetch feeds using Fan-out on Read: Query the user's follow list, fetch the latest posts for each followee from SQL, merge and sort by timestamp in application memory.",
           "l2": "Migrate to Fan-out on Write (Push Model): When an ordinary user posts, background workers push the post ID into the pre-computed in-memory timeline Redis lists (ZSET) of all their followers, enabling O(1) instant timeline reads.",
           "l3": "Implement Hybrid Fan-Out to solve the Celebrity / Hotspot problem (users with millions of followers, e.g., Taylor Swift). Posts by celebrities bypass write fan-out; instead, they are merged on-the-fly into the user's timeline during read requests."
+        },
+        {
+          "id": "prob-3-9",
+          "number": "3.9",
+          "title": "E-Commerce Cart & Inventory Reservation — Amazon / Shopify",
+          "category": "Distributed Inventory & ACID",
+          "calculations": "• 10M active carts, 50,000 checkout transactions per second during Black Friday flash sales.",
+          "l1": "Store shopping carts in relational tables. Deduct inventory synchronously during checkout using database row locking (SELECT FOR UPDATE).",
+          "l2": "Move cart state to distributed key-value datastores (DynamoDB / Redis) indexed by session token. When user initiates checkout, acquire an atomic temporary 15-minute reservation on inventory counters in Redis via Lua scripts.",
+          "l3": "Orchestrate the checkout pipeline using the Saga Pattern (Payment Auth -> Inventory Reservation -> Order Creation -> Fulfillment Notice). If payment fails, trigger compensating transactions to restore inventory reservations without blocking other concurrent buyers."
+        },
+        {
+          "id": "prob-3-10",
+          "number": "3.10",
+          "title": "Financial Ledger & Real-Time Trading — Robinhood / E*Trade",
+          "category": "Ledger Accounting & High Concurrency",
+          "calculations": "• 20M accounts, 100,000 order submissions per second during market open.\n• Absolute requirement: Zero data corruption and zero floating-point arithmetic rounding errors.",
+          "l1": "Enforce Immutable Double-Entry Bookkeeping: Money is neither created nor destroyed; every transaction consists of matching debits and credits that balance to zero. Store values in integer cents (e.g. $10.50 stored as 1050).",
+          "l2": "Deploy an in-memory Single-Threaded Order Matching Engine (similar to LMAX Disruptor pattern) that processes order books sequentially at millions of operations/second without database locks.",
+          "l3": "Persist transaction logs to append-only distributed journals with Raft replication. Replay journals to rebuild in-memory state during disaster recovery. Integrate nightly reconciliation jobs against clearing houses."
+        },
+        {
+          "id": "prob-3-11",
+          "number": "3.11",
+          "title": "Full-Text Search Engine — Google Search / Elasticsearch",
+          "category": "Inverted Index & Information Retrieval",
+          "calculations": "• 100 Billion web documents indexed.\n• 100,000 search queries per second with P99 latency < 100ms.",
+          "l1": "Build an Inverted Index mapping tokenized terms to Posting Lists (document IDs containing the term and position offsets).",
+          "l2": "Partition the inverted index across clusters (Document Partitioning vs Term Partitioning). Compress posting lists using Frame-of-Reference (FOR) and Roaring Bitmaps. Rank documents using BM25 relevance score combined with PageRank link authority.",
+          "l3": "Deploy multi-tier query caches (L1 exact query match, L2 posting list cache). Route queries via distributed scatter-gather coordinators that query shards in parallel and merge top-K candidates."
+        },
+        {
+          "id": "prob-3-12",
+          "number": "3.12",
+          "title": "Hotel & Accommodation Booking — Airbnb / Booking.com",
+          "category": "Calendar Availability & Spatial Search",
+          "calculations": "• 10M listings worldwide, 100M search queries daily, 1M daily bookings.",
+          "l1": "Model listings with availability calendar table `(listing_id, date, status, price)`. Query availability with SQL `WHERE status = 'available' AND date BETWEEN ? AND ?`.",
+          "l2": "Optimize spatial search by pre-indexing listings into Geohash / H3 buckets. Maintain 365-day availability bitmasks in Redis (1 bit per day) to verify multi-night stays in sub-millisecond bitwise operations (AND bitwise match).",
+          "l3": "Prevent double-booking during checkout using two-phase reservation with short expiration TTL. Apply dynamic pricing algorithms calculating localized demand spikes and seasonality."
         }
       ]
     }
