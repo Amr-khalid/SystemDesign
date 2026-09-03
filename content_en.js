@@ -627,6 +627,426 @@ const SystemDesignDataEn = {
           "l3": "Adopt Continuous Batching (iteration-level scheduling) to insert new requests dynamically without waiting for previous requests to finish token generation. Utilize Speculative Decoding and Tensor Parallelism across multi-GPU clusters."
         }
       ]
+    },
+    {
+      "id": "module-4",
+      "number": "4",
+      "title": "Patterns — Distributed Systems Architectural Patterns",
+      "subtitle": "Real-time updates, concurrency control, multi-step distributed transactions, and read/write scaling patterns",
+      "diagramId": "sagaPattern",
+      "sections": [
+        {
+          "id": "sec-4-1",
+          "number": "4.1",
+          "title": "Real-Time Updates — WebSockets vs Server-Sent Events vs Polling",
+          "description": "Evaluating persistent communication protocols and architecting gateway tiers to maintain millions of concurrent connections.",
+          "levels": {
+            "l1": {
+              "badge": "Level 1",
+              "text": "Short/Long Polling causes connection overhead and high latency. Server-Sent Events (SSE) provides lightweight unidirectional streaming from server to client over HTTP/2, ideal for live feeds and stock quotes. WebSockets provides full-duplex bidirectional communication essential for real-time collaboration and chat."
+            },
+            "l2": {
+              "badge": "Level 2",
+              "text": "WebSocket Gateway Architecture: Terminate and maintain persistent TCP/WebSocket connections in a dedicated stateless connection tier. Connect edge gateway instances to a centralized message bus (Redis Pub/Sub or Kafka) to route events to the exact server hosting the target user session."
+            },
+            "l3": {
+              "badge": "Level 3",
+              "text": "Manage Half-Open socket connections using periodic bidirectional heartbeat pings every 30 seconds. On mass network reconnects, enforce Exponential Backoff with Full Jitter to prevent devastating Thundering Herd surges against authentication gateways."
+            }
+          }
+        },
+        {
+          "id": "sec-4-2",
+          "number": "4.2",
+          "title": "Resource Contention & Concurrency Control",
+          "description": "Architectural strategies for handling extreme race conditions on scarce resources (seats, inventory, balances) under high concurrency.",
+          "levels": {
+            "l1": {
+              "badge": "Level 1",
+              "text": "Pessimistic Locking (`SELECT FOR UPDATE`) prevents conflicts by acquiring database exclusive row locks, but degrades throughput and risks deadlocks. Optimistic Locking (`WHERE version = expected_version`) eliminates locks by checking versions before committing, excelling in low-to-medium contention workloads."
+            },
+            "l2": {
+              "badge": "Level 2",
+              "text": "Distributed Mutex Locks in Redis (Redlock algorithm) with strict lease TTL expiration. Alternatively, execute modifications atomically in memory using Redis Lua scripts without heavy network locks."
+            },
+            "l3": {
+              "badge": "Level 3",
+              "text": "In extreme flash sale contention, abandon distributed locks completely. Decouple writes via single-threaded asynchronous queues (Disruptor pattern or Actor Model) where all requests are serialized and deducted in O(1) memory time."
+            }
+          }
+        },
+        {
+          "id": "sec-4-3",
+          "number": "4.3",
+          "title": "Multi-Step Distributed Workflows — The Saga Pattern",
+          "description": "Managing complex distributed transactions across microservices without blocking Two-Phase Commit (2PC) protocols.",
+          "diagramId": "sagaPattern",
+          "levels": {
+            "l1": {
+              "badge": "Level 1",
+              "text": "Two-Phase Commit (2PC) fails in modern microservices because the coordinator holds distributed locks across all participating services throughout the prepare and commit phases, causing systemic latency and single points of failure."
+            },
+            "l2": {
+              "badge": "Level 2",
+              "text": "The Saga Pattern: Choreography (services react to domain events via Kafka without a centralized orchestrator, suitable for 2-4 step flows) vs Orchestration (a central state machine orchestrator directs commands to services, optimal for complex multi-step business transactions)."
+            },
+            "l3": {
+              "badge": "Level 3",
+              "text": "Compensating Transactions: Execute backward rollbacks when any step fails (e.g. refunding payment if inventory fails). Implement the Transactional Outbox Pattern with Change Data Capture (CDC) to guarantee local SQL persistence and Kafka event emission without message loss."
+            }
+          }
+        },
+        {
+          "id": "sec-4-4",
+          "number": "4.4",
+          "title": "Scaling Reads & Writes — CQRS & Write-Behind Caching",
+          "description": "Decoupling read and write data models, and leveraging LSM-trees and queues to absorb massive write throughput.",
+          "levels": {
+            "l1": {
+              "badge": "Level 1",
+              "text": "Route writes to a Primary/Master database and distribute read traffic across multiple Read Replicas. Batch write operations into single bulk queries to reduce database round-trip overhead."
+            },
+            "l2": {
+              "badge": "Level 2",
+              "text": "Command Query Responsibility Segregation (CQRS): Separate the normalized write model (optimized for consistency and validation) from denormalized read models (Elasticsearch / Redis views optimized for sub-millisecond query retrieval)."
+            },
+            "l3": {
+              "badge": "Level 3",
+              "text": "Write-Behind (Asynchronous Write): Ingest write payloads into Kafka, return HTTP 202 Accepted immediately, and write to datastores gradually in the background. Address replica replication lag using Read-Your-Own-Writes consistency tokens."
+            }
+          }
+        }
+      ],
+      "capstone": {
+        "title": "Capstone Case: Global E-Commerce Platform Architecture Combining All Core Patterns",
+        "scenario": "Architect an enterprise e-commerce platform combining CQRS for product search, Saga Orchestration for checkout and fulfillment, Transactional Outbox to prevent event loss, and Write-Behind for customer reviews.",
+        "hiddenSolution": {
+          "summary": "Unified Architectural Pattern Blueprint:",
+          "steps": [
+            {
+              "title": "1. Catalog Browsing & Search (CQRS + Multi-Tier Cache)",
+              "content": "Search and browsing queries target Elasticsearch clusters and Redis L2 caches directly. Read models are updated asynchronously via Kafka events streamed from the master PostgreSQL product datastore."
+            },
+            {
+              "title": "2. Checkout & Order Placement (Saga Orchestrator + Outbox)",
+              "content": "A Temporal-based Saga Orchestrator coordinates sequential workflow steps: Authorize Payment -> Reserve Inventory -> Create Shipping Order. Each microservice writes to its local database and transactional outbox table within a single local transaction."
+            },
+            {
+              "title": "3. Customer Product Reviews (Write-Behind + Kafka)",
+              "content": "Incoming customer product reviews are written directly to Kafka partitions with immediate 202 Accepted return. Background asynchronous workers execute spam classification and persist reviews in batches to Cassandra."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "module-5",
+      "number": "5",
+      "title": "Key Technologies — Deep Dive into Distributed Datastores",
+      "subtitle": "In-depth engineering analysis of modern datastores and stream brokers: Redis, Kafka, Cassandra, ScyllaDB, DynamoDB, and PostgreSQL",
+      "diagramId": "kafkaArchitecture",
+      "sections": [
+        {
+          "id": "sec-5-1",
+          "number": "5.1",
+          "title": "Redis — In-Memory High-Throughput Engine",
+          "description": "Memory architecture, advanced data structures, persistence strategies, and clustering mechanics.",
+          "levels": {
+            "l1": {
+              "badge": "Level 1",
+              "text": "In-memory key-value data structure store delivering microsecond latency. Supports Strings, Hashes, Lists, Sets, Sorted Sets (ZSET), Bitmaps, and HyperLogLogs."
+            },
+            "l2": {
+              "badge": "Level 2",
+              "text": "Single-threaded event loop utilizing non-blocking I/O multiplexing (epoll/kqueue) eliminating thread locking overhead. Persistence strategies: RDB (point-in-time binary snapshots) and AOF (Append-Only File logging every write command with fsync options)."
+            },
+            "l3": {
+              "badge": "Level 3",
+              "text": "Redis Cluster distributes keys across 16,384 hash slots using CRC16. Use Hash Tags `{user_123}:profile` to guarantee related keys hash to the same physical node for multi-key atomic transactions."
+            }
+          }
+        },
+        {
+          "id": "sec-5-3",
+          "number": "5.3",
+          "title": "Apache Kafka — Distributed Event Streaming Backbone",
+          "description": "Append-only commit logs, partition distribution, consumer groups, and exactly-once processing semantics.",
+          "diagramId": "kafkaArchitecture",
+          "levels": {
+            "l1": {
+              "badge": "Level 1",
+              "text": "High-throughput distributed append-only commit log. Topics are partitioned across cluster brokers. Producers append messages to partitions; consumers track read offsets sequentially."
+            },
+            "l2": {
+              "badge": "Level 2",
+              "text": "Extreme throughput driven by sequential disk writes, OS page cache utilization, and Zero-Copy network transfer (`sendfile` system call). Parallel consumption enabled across distributed Consumer Groups."
+            },
+            "l3": {
+              "badge": "Level 3",
+              "text": "Configure `acks=all` with `min.insync.replicas=2` to guarantee zero message loss. Implement Exactly-Once Semantics (EOS) using Kafka Transactions. Modern Kafka utilizes KRaft (Kafka Raft consensus) eliminating ZooKeeper."
+            }
+          }
+        },
+        {
+          "id": "sec-5-5",
+          "number": "5.5",
+          "title": "Apache Cassandra & ScyllaDB — Wide-Column Datastores",
+          "description": "Masterless peer-to-peer architecture, Gossip protocols, LSM-tree storage, and tunable consistency.",
+          "levels": {
+            "l1": {
+              "badge": "Level 1",
+              "text": "Distributed wide-column NoSQL database with a decentralized peer-to-peer masterless architecture. Nodes discover cluster state and topology changes via the Gossip protocol."
+            },
+            "l2": {
+              "badge": "Level 2",
+              "text": "Optimized for ultra-fast writes: commits writes to an on-disk CommitLog and in-memory Memtable before flushing to immutable SSTables. Employs Bloom Filters to avoid unnecessary SSTable disk reads."
+            },
+            "l3": {
+              "badge": "Level 3",
+              "text": "Tunable Consistency (ONE, QUORUM, ALL). Manage deletion tombstones to prevent compaction bloat. Execute background anti-entropy node repairs using Merkle Trees to resolve replica divergence."
+            }
+          }
+        },
+        {
+          "id": "sec-5-6",
+          "number": "5.6",
+          "title": "Amazon DynamoDB & Single-Table Design",
+          "description": "Fully managed NoSQL datastore, constant single-digit millisecond latency, and single-table data modeling patterns.",
+          "levels": {
+            "l1": {
+              "badge": "Level 1",
+              "text": "Fully managed serverless NoSQL datastore providing predictable single-digit millisecond latency at any scale. Uses Partition Key (PK) or composite Partition + Sort Key (PK + SK)."
+            },
+            "l2": {
+              "badge": "Level 2",
+              "text": "Single-Table Design: Modeling multiple distinct entity types (Users, Orders, Items) within a single physical table using overloaded Global Secondary Indexes (GSI) to satisfy all access patterns in a single round-trip without relational joins."
+            },
+            "l3": {
+              "badge": "Level 3",
+              "text": "Enable DynamoDB Streams to capture real-time item mutations for event-driven AWS Lambda execution. Deploy Global Tables for automated multi-region active-active replication."
+            }
+          }
+        }
+      ],
+      "capstone": {
+        "title": "Capstone Case: Technology Selection Matrix for a Hyper-Growth Fintech Platform",
+        "scenario": "A fast-growing fintech platform encompasses banking transactions, instant chat, and product search. Define the exact polyglot storage stack and justification for each functional tier.",
+        "hiddenSolution": {
+          "summary": "Production Polyglot Persistence Blueprint:",
+          "steps": [
+            {
+              "title": "1. Financial Ledger & User Balances (PostgreSQL with PgBouncer)",
+              "content": "Strict ACID compliance, foreign key validation, relational constraints, zero rounding errors, and connection pooling via PgBouncer with Citus for horizontal sharding."
+            },
+            {
+              "title": "2. High-Throughput Chat History (ScyllaDB / Cassandra)",
+              "content": "High write throughput powered by LSM-trees, zero single point of failure (masterless peer-to-peer), partitioned cleanly by `(channel_id, bucket_month)`."
+            },
+            {
+              "title": "3. User Sessions, Rate Limiting & Presences (Redis Cluster)",
+              "content": "Sub-millisecond latency, atomic Lua scripts for rate limiting, and Bitmaps for real-time user online presence."
+            },
+            {
+              "title": "4. Product Catalog & Text Search (Elasticsearch)",
+              "content": "Inverted index for fuzzy full-text matching, updated near real-time from PostgreSQL via Debezium CDC and Kafka."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "module-6",
+      "number": "6",
+      "title": "Advanced Topics — Geospatial, Probabilistic Structures & Vector DBs",
+      "subtitle": "Geospatial indexing (QuadTree/H3), probabilistic algorithms (Bloom/HyperLogLog), and vector databases for AI embeddings",
+      "diagramId": "consistentHashing",
+      "sections": [
+        {
+          "id": "sec-6-1",
+          "number": "6.1",
+          "title": "Proximity & Location Search — QuadTree vs Uber H3 vs Google S2",
+          "description": "Indexing 2D geographic coordinates and hexagonal grids for ride-hailing and localized delivery platforms.",
+          "levels": {
+            "l1": {
+              "badge": "Level 1",
+              "text": "Challenge: Indexing two continuous 2D coordinates (latitude and longitude) efficiently without executing costly full table scans across millions of geographic records."
+            },
+            "l2": {
+              "badge": "Level 2",
+              "text": "Geohash (encoding 2D coordinates into base32 alphanumeric strings where common prefixes denote spatial proximity) and QuadTree (hierarchical 4-quadrant tree partitioning that adapts density to urban versus rural areas)."
+            },
+            "l3": {
+              "badge": "Level 3",
+              "text": "Uber H3 Hexagonal Hierarchical Spatial Index (uniform neighbor distances across all 6 directions, simplifying routing algorithms) and Google S2 space-filling Hilbert Curves for sphere projection."
+            }
+          }
+        },
+        {
+          "id": "sec-6-3",
+          "number": "6.3",
+          "title": "Probabilistic Data Structures for Big Data",
+          "description": "Bloom Filters, HyperLogLog, Count-Min Sketch: saving 99% memory across billions of streamed records.",
+          "table": {
+            "headers": [
+              "Structure",
+              "Core Purpose",
+              "Complexity / Space",
+              "Accuracy Trade-off"
+            ],
+            "rows": [
+              [
+                "Bloom Filter",
+                "Set membership testing",
+                "O(k) / a few bits per element",
+                "Zero false negatives; small tunable false positive rate."
+              ],
+              [
+                "Cuckoo Filter",
+                "Set membership with item deletion support",
+                "O(1) / compact space",
+                "Supports dynamic deletion with higher lookup efficiency than Bloom."
+              ],
+              [
+                "HyperLogLog (HLL)",
+                "Cardinality estimation (distinct counts)",
+                "O(1) / ~1.5KB for millions of items",
+                "Standard error rate ≈ 1.04/√m without storing actual item data."
+              ],
+              [
+                "Count-Min Sketch",
+                "Frequency estimation in streams",
+                "O(d) / fixed 2D array",
+                "Guaranteed never to underestimate frequency; may slightly overestimate."
+              ]
+            ]
+          },
+          "levels": {
+            "l1": {
+              "badge": "Level 1",
+              "text": "Trading absolute 100% precision for 99% accuracy to reduce memory consumption by orders of magnitude when processing billions of records."
+            },
+            "l2": {
+              "badge": "Level 2",
+              "text": "HyperLogLog tracks the maximum number of leading zeros in hashed stream values to estimate cardinality as 2^K with minimal memory footprint."
+            },
+            "l3": {
+              "badge": "Level 3",
+              "text": "Deploy Bloom Filters in database engines (RocksDB/Cassandra) to bypass disk reads for missing keys; deploy HyperLogLog in Reddit/Twitter for real-time unique view counts."
+            }
+          }
+        },
+        {
+          "id": "sec-6-4",
+          "number": "6.4",
+          "title": "Vector Databases — AI Embeddings & RAG Architecture",
+          "description": "Indexing high-dimensional vector embeddings, HNSW graph search, IVF partitioning, and hybrid retrieval.",
+          "levels": {
+            "l1": {
+              "badge": "Level 1",
+              "text": "Transforming text and images into high-dimensional vector embeddings. Similarity search identifies semantic closeness using Cosine Similarity or Euclidean Distance."
+            },
+            "l2": {
+              "badge": "Level 2",
+              "text": "Hierarchical Navigable Small World (HNSW) graph indexing enables logarithmic nearest-neighbor search O(log N). Inverted File (IVF) partitions vector space into Voronoi cells to narrow search scope."
+            },
+            "l3": {
+              "badge": "Level 3",
+              "text": "Product Quantization (PQ) compresses vector representations by 75-90% to fit memory. Deploy Hybrid Search combining dense semantic vectors with sparse BM25 keyword search."
+            }
+          }
+        }
+      ],
+      "capstone": {
+        "title": "Capstone Case: Real-Time IoT Telemetry & Anomaly Processing for 1 Million Sensors",
+        "scenario": "Architect an ingestion pipeline processing pressure and temperature telemetry from 1,000,000 IoT sensors every 5 seconds, calculating distinct active sensors and detecting duplicate signals.",
+        "hiddenSolution": {
+          "summary": "Stream Ingestion & Analytics Architecture:",
+          "steps": [
+            {
+              "title": "1. Telemetry Ingestion & Gorilla Compression",
+              "content": "Sensors stream readings via MQTT to an Envoy gateway tier, which produces to Kafka. A VictoriaMetrics / Prometheus TSDB consumes the stream, compressing timestamps via Delta-of-Delta and values via XOR compression."
+            },
+            {
+              "title": "2. Distinct Active Device Tracking (HyperLogLog)",
+              "content": "A lightweight Redis HyperLogLog register tracks unique active sensor IDs daily, consuming only 1.5KB of memory with 99% accuracy."
+            },
+            {
+              "title": "3. Duplicate Signal Deduplication (Bloom Filter)",
+              "content": "Sensor message IDs pass through an in-memory Bloom Filter to immediately drop duplicate transmissions caused by intermittent cellular retries."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "module-7",
+      "number": "7",
+      "title": "In the Wild — Real-World Enterprise Production Case Studies",
+      "subtitle": "Architectural lessons and production post-mortems from Shopify, Discord, Slack, Figma, and Spotify",
+      "diagramId": "architectureEvolution",
+      "caseStudies": [
+        {
+          "id": "case-7-1",
+          "company": "Shopify",
+          "title": "Black Friday Flash Sale Inventory Reservations at Scale",
+          "problem": "Hundreds of thousands of concurrent shoppers purchasing limited flash-sale inventory simultaneously caused severe MySQL row locking contention, degrading response times and crashing database masters.",
+          "solution": "Extracted hot inventory counters to Redis Cluster and executed atomic inventory deductions in memory via Redis Lua scripts (`DECRBY` bounded at zero). Successful reservations receive a 10-minute temporary checkout hold token.",
+          "productionInsight": "Confirmed reservations are flushed asynchronously to MySQL via Kafka. If checkout expires, an automated task re-increments Redis inventory without human intervention."
+        },
+        {
+          "id": "case-7-2",
+          "company": "Discord",
+          "title": "Storing Trillions of Messages: Migrating from Cassandra to ScyllaDB",
+          "problem": "Long JVM Garbage Collection pauses, tombstone accumulation, and intensive disk compaction stalls in Apache Cassandra as message volume scaled past trillions of rows.",
+          "solution": "Migrated to ScyllaDB (built with C++ on the Seastar asynchronous thread-per-core architecture, eliminating GC pauses). Redesigned primary partition keys to `((channel_id, bucket), message_id)` to cap partition sizes at 100MB.",
+          "productionInsight": "P99 read latency dropped from seconds to a predictable sub-5ms, while reducing overall cluster server count to one-third."
+        },
+        {
+          "id": "case-7-3",
+          "company": "Slack",
+          "title": "Multi-Tenant Queue Fair-Queuing Engine",
+          "problem": "Large enterprise customers enqueuing millions of tasks simultaneously caused Head-of-Line blocking, starving smaller organizations in shared task queues.",
+          "solution": "Built a Fair-Queuing engine that shards tasks into virtual tenant queues, dispatching jobs using Weighted Fair Queuing (WFQ) to guarantee fair resource allocation across all teams.",
+          "productionInsight": "Implemented dynamic tenant rate limits and diverted overflow jobs to secondary low-priority Kafka topics, protecting global queue latency."
+        },
+        {
+          "id": "case-7-4",
+          "company": "Figma",
+          "title": "Real-Time Multiplayer Collaborative Canvas Engine",
+          "problem": "Dozens of designers simultaneously modifying the same canvas required sub-50ms visual updates without operational transformation latency or CRDT memory explosion.",
+          "solution": "Bypassed standard OT and CRDT complexity in favor of a centralized single-threaded authoritative Rust document server per file, maintaining strict chronological operation ordering.",
+          "productionInsight": "Client canvas modifications apply optimistically in the browser via WebAssembly (C++), streaming updates over WebSockets to the Rust server, which broadcasts canonical state diffs to all collaborators."
+        },
+        {
+          "id": "case-7-5",
+          "company": "Spotify",
+          "title": "Data Lake & Music Recommendation Pipeline for 500M Users",
+          "problem": "Processing hundreds of millions of daily stream events for royalty payouts and generating weekly personalized Discover Weekly playlists.",
+          "solution": "Streamed events to Google Cloud Pub/Sub, executed real-time stream aggregation via Apache Beam (Dataflow), and dumped raw logs into Google Cloud Storage as columnar Parquet files.",
+          "productionInsight": "Collaborative filtering and matrix factorization models run on BigQuery and Spark, computing vector embeddings indexed in nearest-neighbor stores to refresh playlists for 500M+ users every Monday morning."
+        }
+      ],
+      "capstone": {
+        "title": "Capstone Case: FAANG Architectural Synthesis & Shared Principles",
+        "scenario": "Comparative architectural analysis of the common patterns adopted by Shopify, Discord, Slack, Figma, and Spotify to overcome extreme scale.",
+        "hiddenSolution": {
+          "summary": "Core Staff+ Engineering Principles:",
+          "steps": [
+            {
+              "title": "1. Replace Distributed Locks with Single-Threaded Event Loops",
+              "content": "As proven by Figma (single-threaded Rust file server), ScyllaDB (thread-per-core), and Redis, avoiding network locking and serializing updates in memory eliminates CPU thrashing and yields highest throughput."
+            },
+            {
+              "title": "2. Smart Partitioning & Bounded Buckets",
+              "content": "As demonstrated by Discord and Uber, preventing individual partition bloat via temporal or spatial bucketing protects disks from compaction stalls and stabilizes P99 latency."
+            },
+            {
+              "title": "3. Fairness & Blast Radius Isolation",
+              "content": "As engineered by Slack and Shopify, isolating tenant resources via virtual queues prevents any single user or organization from causing cascading fleet outages."
+            }
+          ]
+        }
+      }
     }
   ]
 };
