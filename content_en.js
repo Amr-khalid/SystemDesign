@@ -355,6 +355,46 @@ const SystemDesignDataEn = {
           "l1": "Model seat inventory in a relational database using Optimistic Concurrency Control (version column) to prevent double-booking the same seat.",
           "l2": "Deploy a Virtual Waiting Room (Cloudflare Waiting Room / AWS SQS Token Bucket) to throttle traffic surges, admitting buyers at a controlled rate matching downstream database capacity. Hold temporary 10-minute seat reservations in Redis with TTL expiration.",
           "l3": "Execute distributed reservations using atomic Redis Lua scripts to verify availability and deduct inventory in O(1) in memory. Propagate confirmed checkouts asynchronously to PostgreSQL via Kafka, with transactional rollback returning abandoned seats back to the available pool."
+        },
+        {
+          "id": "prob-3-5",
+          "number": "3.5",
+          "title": "Adaptive Video Streaming Platform — Netflix / YouTube",
+          "category": "Media Transcoding & Edge Delivery",
+          "calculations": "• 2B active users, 1B hours of video streamed daily.\n• Ingress bandwidth: 500 hours uploaded per minute (30TB/hour).",
+          "l1": "Store raw video files in Amazon S3. Ingest videos and transcode into standard resolutions (1080p, 720p, 480p) using FFmpeg workers, serving chunks through a global Content Delivery Network (CDN).",
+          "l2": "Segment video files into 2-6 second chunks and generate adaptive manifests using HLS (HTTP Live Streaming) and MPEG-DASH. Client media players measure live network throughput and automatically switch bitrates dynamically without buffering.",
+          "l3": "Deploy custom Open Connect appliances (custom ISP edge caches) inside local internet service provider datacenters. Pre-position popular regional catalog titles during overnight off-peak hours via predictive machine learning caches to offload 95% of backbone traffic."
+        },
+        {
+          "id": "prob-3-6",
+          "number": "3.6",
+          "title": "Proximity Service & Ride Hailing — Uber / Careem",
+          "category": "Geospatial Indexing & Routing",
+          "calculations": "• 100M monthly active riders, 5M active drivers worldwide.\n• Driver location broadcasts: 5M drivers * 1 ping every 4s = 1.25M location QPS.",
+          "l1": "Store spatial coordinates (latitude, longitude) with PostgreSQL PostGIS extension and query drivers using basic bounding boxes or distance formulas.",
+          "l2": "Adopt Uber H3 Hexagonal Spatial Indexing or Google S2 spherical projection. Partition earth into discrete hierarchical cells. When a rider requests a pickup, query the rider's H3 cell and immediate 6 neighbor rings to locate nearest drivers in O(1).",
+          "l3": "Maintain volatile driver locations purely in memory within a distributed Redis Cluster or custom Ringpop cluster. Isolate matching algorithms into city-level partition cells, preventing cross-region cascading failures and maintaining P99 matching latency under 100ms."
+        },
+        {
+          "id": "prob-3-7",
+          "number": "3.7",
+          "title": "Distributed Real-Time Chat — WhatsApp / Slack",
+          "category": "WebSockets & Message Sequencing",
+          "calculations": "• 2B users, 100B messages transmitted daily (~1.2M messages/sec avg, 5M peak).\n• Message size: 1KB average = 100TB daily text storage.",
+          "l1": "Maintain persistent bidirectional WebSocket connections between client devices and a stateless chat gateway tier. Store messages in a relational database with indexes on (conversation_id, created_at).",
+          "l2": "Deploy a distributed Session Registry in Redis to track which gateway server hosts each active user connection. Route peer-to-peer messages across gateway clusters using Apache Kafka / RabbitMQ topics. Store chat history in wide-column datastores (ScyllaDB / Cassandra) partitioned by `(channel_id, bucket_month)`.",
+          "l3": "Guarantee global message ordering within groups using distributed monotonic sequence generators. Implement Signal protocol end-to-end encryption (E2EE) with pre-keys. Store undelivered messages in ephemeral queues and deliver with delivery receipt acknowledgments (Sent, Delivered, Read)."
+        },
+        {
+          "id": "prob-3-8",
+          "number": "3.8",
+          "title": "Social Media Newsfeed & Timeline — Twitter / Instagram",
+          "category": "Fan-Out & Cache Curation",
+          "calculations": "• 300M daily active users, 500M tweets posted daily (~6k writes/sec, 50k peak).\n• Timeline read requests: 3B timeline queries daily (~35,000 read QPS).",
+          "l1": "Fetch feeds using Fan-out on Read: Query the user's follow list, fetch the latest posts for each followee from SQL, merge and sort by timestamp in application memory.",
+          "l2": "Migrate to Fan-out on Write (Push Model): When an ordinary user posts, background workers push the post ID into the pre-computed in-memory timeline Redis lists (ZSET) of all their followers, enabling O(1) instant timeline reads.",
+          "l3": "Implement Hybrid Fan-Out to solve the Celebrity / Hotspot problem (users with millions of followers, e.g., Taylor Swift). Posts by celebrities bypass write fan-out; instead, they are merged on-the-fly into the user's timeline during read requests."
         }
       ]
     }
