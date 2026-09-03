@@ -174,6 +174,140 @@ const SystemDesignDataEn = {
           ]
         }
       }
+    },
+    {
+      "id": "module-2",
+      "number": "2",
+      "title": "Core Concepts — Distributed Systems Fundamentals",
+      "subtitle": "Networking protocols, caching architectures, consistent hashing, distributed data models, and consensus theorems",
+      "diagramId": "cachingStrategies",
+      "sections": [
+        {
+          "id": "sec-2-1",
+          "number": "2.1",
+          "title": "Networking Essentials & Web Protocols",
+          "description": "Understanding the OSI model, transport layer mechanics, HTTP evolution (HTTP/1.1 to HTTP/3), and load balancing tiers.",
+          "levels": {
+            "l1": {
+              "badge": "Level 1: Protocols & OSI Model",
+              "text": "OSI and TCP/IP models from physical wire to Layer 7. TCP provides reliable, ordered stream delivery via 3-way handshake (SYN, SYN-ACK, ACK) and flow control. UDP provides connectionless, low-overhead datagram transmission optimal for gaming, voice, and live video."
+            },
+            "l2": {
+              "badge": "Level 2: HTTP Evolution & Load Balancing Tiers",
+              "text": "HTTP/1.1 introduced persistent connections but suffers from Head-of-Line (HoL) blocking. HTTP/2 introduced binary framing, multiplexed streams over a single TCP connection, and HPACK header compression. HTTP/3 replaced TCP with QUIC over UDP, eliminating transport-level HoL blocking. Load balancers: Layer 4 (TCP/UDP IP/Port hashing for ultra-high throughput) vs Layer 7 (URL routing, cookie affinity, and SSL/TLS termination)."
+            },
+            "l3": {
+              "badge": "Level 3: Global Routing & Socket Optimization",
+              "text": "Geo-DNS and BGP Anycast routing advertise the same IP worldwide to steer traffic to the closest Edge data center. Implement TCP connection pooling and keep-alive tuning to avoid socket exhaustion under massive concurrency."
+            }
+          }
+        },
+        {
+          "id": "sec-2-4",
+          "number": "2.4",
+          "title": "Advanced Caching Strategies & Crisis Mitigation",
+          "description": "Cache design patterns, eviction policies, and proven mitigation strategies for critical production cache failures.",
+          "diagramId": "cachingStrategies",
+          "levels": {
+            "l1": {
+              "badge": "Level 1: The Four Cache Access Patterns",
+              "text": "Cache-Aside (application queries cache, falls back to DB on miss, then populates cache), Write-Through (synchronous write to cache and datastore together), Write-Back / Write-Behind (write to cache first, write to DB asynchronously in batches), and Write-Around (write directly to datastore, bypassing cache)."
+            },
+            "l2": {
+              "badge": "Level 2: Eviction Policies & Crisis Mitigation",
+              "text": "Eviction algorithms: LRU (Least Recently Used), LFU (Least Frequently Used), FIFO. Mitigate Cache Stampede / Thundering Herd using distributed mutexes or probabilistic early recomputation (XFetch algorithm). Mitigate Cache Penetration (queries for non-existent keys) using Bloom Filters or caching null objects with short TTL. Mitigate Cache Avalanche (simultaneous mass expiration) by adding random jitter to TTLs."
+            },
+            "l3": {
+              "badge": "Level 3: Multi-Tier Caching Architecture",
+              "text": "Design hierarchical caching: L1 Process Memory (Caffeine in JVM or in-memory dictionary), L2 Distributed Cache (Redis Cluster), and L3 Edge CDN for static/public payloads. Coordinate cache invalidation via Change Data Capture (CDC) events streamed over Kafka."
+            }
+          }
+        },
+        {
+          "id": "sec-2-6",
+          "number": "2.6",
+          "title": "Consistent Hashing & Virtual Nodes",
+          "description": "Distributing keys across dynamic cluster nodes with minimal key movement during scaling events.",
+          "diagramId": "consistentHashing",
+          "levels": {
+            "l1": {
+              "badge": "Level 1: The Modulo Problem",
+              "text": "Traditional hash partitioning `hash(key) % N` causes nearly all keys to remap when cluster size N changes by adding or removing a single node, causing devastating cache misses across the fleet."
+            },
+            "l2": {
+              "badge": "Level 2: The Hash Ring & Virtual Nodes",
+              "text": "Consistent Hashing maps both keys and nodes onto a 2^32-1 circular hash ring. A key maps to the first node encountered clockwise. Virtual Nodes (vnodes)—mapping each physical node to hundreds of discrete ring positions—solve hotspots and guarantee uniform load distribution."
+            },
+            "l3": {
+              "badge": "Level 3: Dynamic Replication & Gossip Protocol",
+              "text": "Replicating keys to the first K unique physical nodes clockwise ensures high availability. Nodes utilize decentralized Gossip protocols (such as in Cassandra and DynamoDB) to detect cluster membership changes and dynamically hand off partitions."
+            }
+          }
+        },
+        {
+          "id": "sec-2-7",
+          "number": "2.7",
+          "title": "Distributed Systems Theorems — CAP & PACELC",
+          "description": "Theoretical guarantees, trade-offs, and practical implications in modern geo-distributed architectures.",
+          "diagramId": "capTheorem",
+          "levels": {
+            "l1": {
+              "badge": "Level 1: CAP Theorem Foundations",
+              "text": "Under network partition (P)—which is inevitable in real-world distributed networks—a system must choose between Consistency (C: every read returns the most recent write or errors) and Availability (A: every non-failing node returns a response, but potentially stale)."
+            },
+            "l2": {
+              "badge": "Level 2: PACELC Theorem Extension",
+              "text": "CAP only describes behavior during network partitions. PACELC expands this: If there is a Partition (P), choose Availability (A) or Consistency (C); Else (E), choose Latency (L) or Consistency (C). Example: DynamoDB and Cassandra are PA/EL systems, while MongoDB and HBase are PC/EC."
+            },
+            "l3": {
+              "badge": "Level 3: Tunable Consistency & Vector Clocks",
+              "text": "Configuring Quorum consensus: R + W > N guarantees strong consistency (where N is replication factor, W is write quorum, R is read quorum). Utilize Vector Clocks and Conflict-Free Replicated Data Types (CRDTs) to resolve concurrent diverging updates without centralized coordination."
+            }
+          }
+        },
+        {
+          "id": "sec-2-8",
+          "number": "2.8",
+          "title": "Storage Engines — LSM-Trees vs B-Trees",
+          "description": "Internal database storage engines, write amplification, compaction strategies, and disk access mechanics.",
+          "diagramId": "storageEngines",
+          "levels": {
+            "l1": {
+              "badge": "Level 1: In-Place vs Append-Only Storage",
+              "text": "B-Trees (PostgreSQL, MySQL InnoDB) update data in-place on fixed-size disk pages (4KB-16KB). LSM-Trees (RocksDB, Cassandra, ScyllaDB) write sequentially to an append-only commit log and memory table (MemTable), then flush immutable SSTables to disk."
+            },
+            "l2": {
+              "badge": "Level 2: Write Amplification & Compaction",
+              "text": "LSM-Trees optimize for ultra-high write throughput by turning random writes into sequential writes. SSTable background compaction (Size-Tiered vs Leveled Compaction) merges sorted runs, purges tombstones, and reclaims disk space."
+            },
+            "l3": {
+              "badge": "Level 3: Production Tuning & Bloom Optimization",
+              "text": "Equip LSM-Trees with in-memory Bloom Filters to bypass reading SSTables that do not contain the searched key. Balance the RUM Conjecture: Read overhead, Update cost, and Memory footprint trade-offs for target query workloads."
+            }
+          }
+        }
+      ],
+      "capstone": {
+        "title": "Capstone Case: High-Throughput Distributed Counter with Zero Race Conditions",
+        "scenario": "Design a distributed real-time view counter for a viral video platform processing 500,000 view events per second with high availability and eventual consistency.",
+        "hiddenSolution": {
+          "summary": "Architectural solution combining in-memory aggregation, sharded counters, and asynchronous batching:",
+          "steps": [
+            {
+              "title": "1. Ingestion Layer & Buffering",
+              "content": "Client requests terminate at Envoy edge proxies. Envoy buffers view events into local process memory and flushes aggregated increments every 100ms directly to Apache Kafka partitions mapped by video_id."
+            },
+            {
+              "title": "2. Sharded Redis Counter Tier",
+              "content": "A pool of stream processing workers consume from Kafka and execute atomic Redis INCRBY operations against a Sharded Counter model: `video:{id}:slot:{0..9}`. Sharding into 10 independent slots per video eliminates CPU contention on individual Redis keys."
+            },
+            {
+              "title": "3. Persistent Storage & Read Path",
+              "content": "A scheduled background flusher aggregates all 10 slots every 5 seconds and issues an asynchronous batch UPDATE to the primary relational datastore: `UPDATE video_stats SET views = views + ? WHERE video_id = ?`. Reads fetch cached totals from Redis in O(1) time."
+            }
+          ]
+        }
+      }
     }
   ]
 };
