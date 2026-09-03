@@ -1132,10 +1132,123 @@ const SystemDesignDiagrams = {
     `, "0 0 860 360");
   },
 
+// English localization dictionary for SVG diagram text
+  diagramTranslationsEn: {
+  "1. فهم النطاق والمتطلبات": "1. Scope & Requirements Clarification",
+  "1. نمط التحميل الكسول (Cache-Aside / Lazy Loading)": "1. Cache-Aside Pattern (Lazy Loading)",
+  "10 - 15 دقيقة": "10 - 15 mins",
+  "15 - 20 دقيقة (قلب المقابلة)": "15 - 20 mins (Deep Dive Core)",
+  "2. التصميم عالي المستوى": "2. High-Level Design",
+  "2. الكتابة المتزامنة (Write-Through)": "2. Write-Through Caching",
+  "3 - 5 دقائق": "3 - 5 mins",
+  "3. App Populates Cache | مناسب لعمليات القراءة الكثيفة (Read-Heavy)": "3. App Populates Cache | Optimal for Read-Heavy Workloads",
+  "3. التعمق في المكونات (Deep Dive)": "3. Deep Dive into Bottlenecks",
+  "3. الكتابة الخلفية غير المتزامنة (Write-Back)": "3. Write-Back (Asynchronous Persistence)",
+  "4. الاختناقات والخاتمة": "4. Bottlenecks & Wrap-Up",
+  "4. حماية الأزمات (Stampede, Penetration, Avalanche)": "4. Crisis Protection (Stampede, Penetration, Avalanche)",
+  "5 - 8 دقائق": "5 - 8 mins",
+  "Base62 Encoding يوفر 3.5 تريليون مفتاح فريد عبر 7 خانات فقط [a-z, A-Z, 0-9]": "Base62 Encoding yields 3.5 Trillion unique keys across 7 characters [a-zA-Z0-9]",
+  "CA غير واقعي في الشبكات": "CA is impractical over physical networks",
+  "Compensating Transactions: تراجع تعويضي تلقائي في حال فشل أي خطوة وسيطة": "Compensating Transactions: Automated backward rollback if any intermediate step fails",
+  "Driver Locking: Redis Mutex (10s TTL) عند تقديم العرض لمنع مطابقة السائق نفسه مع راكبين في نفس اللحظة.": "Driver Locking: Redis Mutex (10s TTL) on dispatch offer prevents dual-matching to two riders.",
+  "N: عدد النسخ | W: موافقات الكتابة | R: موافقات القراءة": "N: Replicas | W: Write Quorum | R: Read Quorum",
+  "R + W > N  (لضمان الاتساق القوي المتزامن)": "R + W > N (Guarantees Strong Linearizable Consistency)",
+  "أكثر من 95% من البث يخرج من كاشات Open Connect المحلية دون استهلاك شبكة الإنترنت الدولية.": "Over 95% of video traffic is served directly from local Open Connect ISP caches.",
+  "إذا حدث انقطاع (Partition): نختار بين A و C.": "On Network Partition (P): Choose between Availability (A) and Consistency (C).",
+  "إطار الـ 45 دقيقة القياسي لمقابلات تصميم النظم (Standard 45-Min Framework)": "Standard 45-Minute System Design Interview Framework",
+  "استجابة فائقة السرعة | خطر فقدان بيانات إذا تعطل الكاش قبل التفريغ": "Ultra-low latency | Data loss risk if cache crashes before disk flush",
+  "استخدام محرك الحالات (State Machine) يلغي الاعتماديات الدائرية ويضمن سلامة البيانات الموزعة.": "State Machine orchestration eliminates cyclic dependencies and guarantees distributed data safety.",
+  "الاتساق (Consistency)": "Consistency (C)",
+  "التجزئة المتسقة وحلقة العقد الافتراضية (Consistent Hashing Ring & Virtual Nodes)": "Consistent Hashing Ring & Virtual Nodes",
+  "التوافر (Availability)": "Availability (A)",
+  "الطلب يبدأ من تطبيق المشاهد على اليمين، بينما يتدفق محتوى الفيديو مباشرة من خوادم الـ CDN المجهزة على اليسار.": "Viewer initiates playback from client; video byte streams flow directly from edge CDN servers.",
+  "العقد الافتراضية (Virtual Nodes)": "Virtual Nodes (vnodes)",
+  "الكاش يحدث الـ DB فوراً | يمنع تناقض البيانات ولكن يزيد زمن الكتابة": "Cache writes to DB synchronously | Eliminates inconsistency but increases write latency",
+  "المستوى 1: النظام الأحادي (Monolith)": "Level 1: Monolithic Architecture",
+  "المستوى 2: التوسع الأفقي والكاش": "Level 2: Horizontal Scaling & Caching",
+  "المستوى 3: الخدمات المصغرة والتدفق": "Level 3: Microservices & Event Streams",
+  "المنتجون على اليمين يضخون الأحداث للـ Partitions وتستهلكها العقد المستقلة على اليسار.": "Producers append event batches into Partitions; independent consumers read offsets sequentially.",
+  "المنسق (Orchestrator) يبدأ على اليمين ويمرر الأوامر خطوة بخطوة باتجاه اليسار.": "Saga Orchestrator coordinates sequential workflow execution with compensating rollbacks.",
+  "المهندس المميز (Staff+) يقود الحوار ويبرر كل قرار باختبارات الأداء والأرقام البديلة.": "Staff+ Engineers drive the narrative, validating decisions with metrics and concrete trade-offs.",
+  "النسخ الاحتياطي (Replication N=3)": "Replication Factor (N=3)",
+  "بروتوكول Double Ratchet يضمن السرية التامة — يبدأ الإرسال من اليمين وينتقل مشفراً نحو المستلم على اليسار.": "Double Ratchet Protocol ensures end-to-end forward secrecy from sender to recipient.",
+  "تتدفق نبضات المشاهدة من تطبيق الهاتف باليمين وتحدث نموذج التوصية باليسار في أقل من نصف ثانية.": "Telemetry signals stream in real-time to update candidate ranking models in sub-second latency.",
+  "تحذف الرسالة نهائياً فور استلام علامتي الصح الزرقاء (Double Tick)": "Message permanently purged from server immediately upon delivery acknowledgment (ACK)",
+  "تدخل الطلبات من اليمين، وتفحص ذرّياً في Redis عبر نصوص Lua، لتمر السليمة إلى اليسار.": "Requests evaluated atomically in Redis via Lua scripts, allowing valid traffic through.",
+  "ترتيب الرسائل مضمون 100% داخل الـ Partition الواحد مع قابلية توسع أفقية غير محدودة.": "Strict message ordering is guaranteed within each Partition with horizontal elasticity.",
+  "تسلسل المعاملة الموزعة (Saga Orchestration Flow: من اليمين إلى اليسار)": "Saga Orchestration Workflow Sequence",
+  "تقنية Adaptive Bitrate Streaming تعدل الجودة تلقائياً لكل ثانية حسب سرعة إنترنت المشاهد بالمللي ثانية.": "Adaptive Bitrate Streaming switches video quality seamlessly based on live viewer bandwidth.",
+  "توزيعها عبر Rack-aware zones مختلفة.": "Replicated across diverse rack-aware failure domains.",
+  "توسعة PACELC الشاملة": "PACELC Theorem Extension",
+  "خوارزميات محدد معدل الطلبات والتوزيع (Rate Limiter Architecture RTL)": "Rate Limiter & Traffic Shaping Architecture",
+  "خوارزمية Sliding Window Log تمنع ثغرة الـ Bursting المضاعف التي تعاني منها خوارزمية Fixed Window.": "Sliding Window Log eliminates boundary burst vulnerabilities present in fixed-window algorithms.",
+  "دفتر الأستاذ المزدوج يضمن عدم إنشاء أو اختفاء قرش واحد دون سجل مدين ودائن متطابق 100%.": "Double-entry ledger ensures zero discrepancy with balanced debit and credit entries.",
+  "عند إضافة أو إزالة أي خادم فيزيائي.": "When physical server nodes are added or removed dynamically.",
+  "غرفة الانتظار الافتراضية تفلتر البوتات وتمرر المشترين بمعدل ثابت يطابق سعة بوابات الدفع البنكية.": "Virtual Waiting Room throttles bot bursts and drains users at a controlled, sustainable rate.",
+  "في الحالة الطبيعية (Else): نختار بين Latency (L) و Consistency (C).": "In Normal State (Else): Choose between Latency (L) and Consistency (C).",
+  "قاعدة ذهبية: يبدأ التسلسل من اليمين (فهم النطاق والـ Scale) وينتهي في اليسار (معالجة نقاط الانهيار).": "Golden Rule: Progress systematically from scope clarification to component deep dive.",
+  "محركات التخزين: B+ Tree (للقراءة) مقابل LSM-Tree (للكتابة الفائقة)": "Storage Engines: B+ Tree (Read-Optimized) vs LSM-Tree (Write-Optimized)",
+  "معادلة النصاب القانوني (Quorum Formula)": "Quorum Consensus Formula",
+  "معمارية Apache Kafka: الأقسام ومجموعات المستهلكين (Partitions & Consumers RTL)": "Apache Kafka Architecture: Partitions & Consumer Groups",
+  "معمارية Netflix: التوصيات المخصصة وتوزيع Open Connect CDN (RTL Flow)": "Netflix Architecture: Open Connect CDN & Recommendation Delivery",
+  "معمارية TikTok: توصيات الفيديو اللحظية والتحميل المسبق الذكي (For You Feed RTL)": "TikTok Architecture: Real-Time For You Feed & Smart Pre-Buffering",
+  "معمارية التحويل المالي اللحظي (InstaPay / IPN Instant Payment Architecture RTL)": "Instant Payment Network (IPN) Architecture",
+  "معمارية الـ L1 Local (Caffeine) + L2 Remote (Redis) لتوفير أقصى متانة": "L1 Process Memory (Caffeine) + L2 Remote (Redis) for Multi-Tier Caching",
+  "معمارية المحادثات الفورية المشفرة والتواجد (WhatsApp E2EE Architecture)": "WhatsApp End-to-End Encrypted Chat & Presence Architecture",
+  "معمارية تقصير الروابط الفائقة (Bitly URL Shortener Architecture)": "Bitly High-Throughput URL Shortener Architecture",
+  "معمارية معالجة وبث الفيديو التكيفي (YouTube Video Processing Pipeline RTL)": "YouTube Video Ingestion & Transcoding Pipeline",
+  "معمارية منصات التجارة والمبيعات الخاطفة (Amazon / Flash Sale Architecture RTL)": "High-Concurrency Flash Sale Architecture",
+  "معمارية منصات النقل التشاركي والمطابقة الجغرافية (Uber / Lyft Architecture)": "Uber Geospatial Proximity & Dispatching Architecture",
+  "مقارنة أنماط التخزين المؤقت المعمارية (Caching Patterns Architecture)": "Distributed Caching Patterns Architecture",
+  "مقاومة الانقطاع (Partition)": "Partition Tolerance (P)",
+  "مميزات Consistent Hashing": "Key Benefits of Consistent Hashing",
+  "نظرية CAP ونظرية PACELC لتفاضل الأنظمة الموزعة": "CAP & PACELC Distributed Systems Theorems",
+  "نمط Saga للمعاملات الموزعة (Orchestration & Workflow RTL)": "Saga Pattern for Distributed Transactions",
+  "يبدأ أمر التحويل من تطبيق العميل باليمين، ويمر بالـ Saga والبنك المركزي، حتى إيداع المبلغ بحساب المستفيد على اليسار.": "Transfer orchestrator reserves sender funds, interfaces with central bank switch, and credits recipient.",
+  "يبدأ الطلب من العميل على اليمين ويمر بالبوابة حتى قواعد البيانات والتحليلات على اليسار.": "Client request passes through API gateway and cache tiers to core database and analytics.",
+  "يبدأ رفع الفيديو من صانع المحتوى على اليمين، ثم يقطع لـ GOPs متوازية، ويوزع عبر الـ CDN على اليسار.": "Master video uploaded to S3, transcoded in parallel into adaptive chunks, and distributed via CDN.",
+  "يبدأ طوفان المشترين من اليمين، ويتم حجز المخزون ذرياً في الذاكرة بالمنتصف، وتستقر العمليات بقواعد البيانات باليسار.": "Traffic throttled at edge; inventory reserved atomically in Redis; orders settled asynchronously in SQL.",
+  "يقوم التطبيق بالتحميل المسبق لأول 3 ثوانٍ من الفيديوهات التالية ليصبح التمرير فورياً بدون أي تأخير.": "Client pre-buffers first 3 seconds of upcoming videos for instantaneous zero-latency feed scrolling.",
+  "• أسئلة استشرافية": "• Proactive Exploratory Questions",
+  "• إعادة تعيين الحد الأدنى فقط (k/N) من المفاتيح": "• Remaps minimal (k/N) keys on cluster size changes",
+  "• استخدام Bloom Filters لتسريع القراءة وتخطي الملفات": "• Uses Bloom Filters to bypass reading irrelevant SSTables",
+  "• القضاء التام على البقع الساخنة (Hotspots)": "• Completely eliminates cluster hotspot imbalances",
+  "• المقايضات (Trade-offs)": "• Concrete Trade-offs Analysis",
+  "• تحديث في نفس الصفحة الفيزيائية (In-place update)": "• In-place page mutations on disk blocks",
+  "• تحديد القيود والحدود": "• Clarifying Constraints & SLA Targets",
+  "• تخزين النسخة في العقد الـ N التالية مع مراعاة": "• Replicates keys to next N clockwise physical nodes",
+  "• تفاوت السعات حسب قوة الخادم الفيزيائي": "• Weights virtual tokens according to hardware capacity",
+  "• خوارزميات التجزئة والتوزيع": "• Partitioning & Routing Algorithms",
+  "• دمج دوري (Compaction) لحذف البيانات وشواهد القبور": "• Periodic Compaction merges runs and purges tombstones",
+  "• سرعة كتابة مذهلة عبر التسجيل التسلسلي (Sequential I/O)": "• Ultra-fast writes via sequential append-only commit logs",
+  "• كل خادم يملك 100 - 256 نقطة موزعة بانتظام": "• Each server maps to 100 - 256 evenly spaced vnodes",
+  "• مثالي للبيانات العلائقية والاستعلام بالنطاق": "• Ideal for relational range scans and point lookups",
+  "• مسار القراءة والكتابة": "• Explicit Read & Write Data Flow",
+  "• مضاعفة كتابة عالية بسبب عشوائية الـ Random I/O": "• Higher write amplification from random disk page I/O",
+  "• معالجة التنافس (Race Cond)": "• Concurrency Control & Race Prevention"
+},
+
+  localizeToEnglish(svgString) {
+    if (!svgString) return '';
+    let res = svgString;
+    const dict = this.diagramTranslationsEn;
+    for (const [ar, en] of Object.entries(dict)) {
+      if (res.includes(ar)) {
+        res = res.split(ar).join(en);
+      }
+    }
+    return res;
+  },
+
   // Method to render diagram by ID
   render(diagramId) {
     if (typeof this[diagramId] === 'function') {
-      return this[diagramId]();
+      let svg = this[diagramId]();
+      const isEn = typeof App !== 'undefined' && App.currentLang === 'en';
+      if (isEn && typeof this.localizeToEnglish === 'function') {
+        svg = this.localizeToEnglish(svg);
+      }
+      return svg;
     }
     return '';
   }
