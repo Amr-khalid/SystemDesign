@@ -575,6 +575,56 @@ const SystemDesignDataEn = {
           "l1": "Store scheduled jobs in SQL database with polling thread: `SELECT * FROM jobs WHERE execute_at <= NOW() AND status = 'PENDING'`.",
           "l2": "Decouple scheduler into Leader-Follower coordinators using ZooKeeper / etcd for leader election. The leader partitions job triggers into prioritized time buckets in Redis Sorted Sets.",
           "l3": "Distribute task execution to worker clusters via Apache Kafka topics. Implement heartbeats, distributed execution leases, and automatic retries with exponential backoff on worker failure."
+        },
+        {
+          "id": "prob-3-27",
+          "number": "3.27",
+          "title": "Ad Click Aggregator & Fraud Detection — Google Ads",
+          "category": "Stream Windowing & Deduplication",
+          "calculations": "• 1B ad impressions and 100M ad clicks daily. Exactly-once billing semantics and fraud prevention.",
+          "l1": "Write click events synchronously to relational database and aggregate billing via periodic SQL queries.",
+          "l2": "Stream clicks to Apache Kafka with partitioning by `(advertiser_id, campaign_id)`. Process clicks in Apache Flink using 1-minute and 1-hour Tumbling / Sliding Windows.",
+          "l3": "Detect click fraud (click farms, duplicate rapid clicks) using sliding window state in Flink with user IP / device fingerprints. Write aggregated billing metrics to ClickHouse for analytical dashboards."
+        },
+        {
+          "id": "prob-3-28",
+          "number": "3.28",
+          "title": "Distributed File System — Google GFS / Apache HDFS",
+          "category": "Block Storage & Master-Worker",
+          "calculations": "• Petabyte-scale storage, 100M files, files appended rather than overwritten.",
+          "l1": "Single file server with RAID disk storage. (Limited by disk capacity, bus throughput, and represents single point of failure).",
+          "l2": "Master-Worker Architecture: A single Master node maintains filesystem metadata and directory tree in memory. Files are divided into fixed 64MB Chunks stored across ChunkServers with 3x replication.",
+          "l3": "Clients contact Master only for metadata and chunk locations, then stream binary read/write operations directly to ChunkServers to eliminate Master I/O bottlenecks. Implement background chunk re-balancing and checksum verification."
+        },
+        {
+          "id": "prob-3-29",
+          "number": "3.29",
+          "title": "Global Edge CDN & DDoS Mitigation — Cloudflare",
+          "category": "Anycast & Edge Reverse Proxy",
+          "calculations": "• 300+ edge data centers, 50M HTTP requests per second, absorbing multi-terabit DDoS attacks.",
+          "l1": "Single reverse proxy (Nginx) fronting application servers.",
+          "l2": "Deploy BGP Anycast routing: Multiple global edge servers advertise identical IP addresses; internet routing protocols naturally steer user requests to the topologically nearest edge PoP.",
+          "l3": "Execute eBPF / XDP packet filtering inside Linux kernel at line rate to drop volumetric DDoS floods (SYN floods, UDP amplification) before reaching user space. Cache dynamic responses using stale-while-revalidate."
+        },
+        {
+          "id": "prob-3-30",
+          "number": "3.30",
+          "title": "Real-Time Collaborative Document Editor — Google Docs",
+          "category": "Operational Transformation & CRDT",
+          "calculations": "• Thousands of concurrent active editors on a shared document with sub-50ms character synchronization.",
+          "l1": "Lock document during editing to prevent concurrent overwrites. (Completely unacceptable user experience).",
+          "l2": "Implement Operational Transformation (OT) with a centralized coordination server that transforms insert/delete operations based on concurrent operation logs.",
+          "l3": "Adopt Conflict-Free Replicated Data Types (CRDTs - Yjs / Automerge) providing mathematically commutative and idempotent operations, allowing peer-to-peer divergence and convergence without a central transformation server."
+        },
+        {
+          "id": "prob-3-31",
+          "number": "3.31",
+          "title": "Large Language Model (LLM) Inference Serving — vLLM / OpenAI API",
+          "category": "GPU Memory & Continuous Batching",
+          "calculations": "• Serve 70B parameter models (140GB FP16 weights) with sub-second time-to-first-token (TTFT) and high token throughput.",
+          "l1": "Load model weights onto single GPU and execute synchronous forward-pass per user prompt. (Suffers from massive memory fragmentation and sequential idle time).",
+          "l2": "Implement PagedAttention (vLLM pattern): Manage Key-Value (KV) cache memory like virtual memory pages in operating systems, eliminating fragmentation and enabling multi-sequence KV sharing for parallel branching.",
+          "l3": "Adopt Continuous Batching (iteration-level scheduling) to insert new requests dynamically without waiting for previous requests to finish token generation. Utilize Speculative Decoding and Tensor Parallelism across multi-GPU clusters."
         }
       ]
     }
