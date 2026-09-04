@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🏛️ System Design Mastery & Interactive Architecture Lab
+#🏛️ System Design Mastery & Interactive Architecture Lab
 ### The Ultimate Comprehensive Handbook, Production Case Studies & Interactive Simulator for Distributed Systems & High-Scale Architecture (FAANG / Big Tech)
 
 [![GitHub License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
